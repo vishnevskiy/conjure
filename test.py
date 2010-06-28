@@ -14,7 +14,7 @@ class User(documents.Document):
         indexes = ['username', '-friends']
 
 query = User.objects.filter(User.username == 'stanislav', ~User.friends.in_(2, 3, 4))
-query += User.objects.filter(User.guilds.in_(2, 3, 4), User.settings.sound == False)
+query |= User.objects.filter(User.guilds.in_(2, 3, 4), User.settings.sound == False)
 query.delete() 
 
 # deleted {'$or': [{'username': 'stanislav', 'friends': {'$nin': [2, 3, 4]}}, {'test': {'$in': [2, 3, 4]}}]}

@@ -28,10 +28,18 @@ class Q(object):
         pass
     
     def __add__(self, other):
-        return Q({'$or': [self.spec, other.spec]})
+        qs = self.clone()
+        qs.spec.update(other.spec)
+        
+        return qs
     
     __iadd__ = __add__
 
+    def __or__(self, other):
+        return Q({'$or': [self.spec, other.spec]})
+    
+    __ior__ = __or__
+    
     def __repr__(self):
         return self.spec.__repr__()
     
