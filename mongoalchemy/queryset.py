@@ -22,7 +22,7 @@ class Q(object):
         print 'update %s with %s' % (self.__repr__(), spec)
 
     def delete(self):
-        print 'deleted %s' % self.__repr__()
+        return self.spec
         
     def count(self):
         pass
