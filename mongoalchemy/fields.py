@@ -1,20 +1,64 @@
-from mongoalchemy.queryset import Expression
+from mongoalchemy import expressions
 
 class Field(object): 
     def __init__(self, name='???', **kwargs): 
         self._name = name
 
+    # +
     def __add__(self, other):
-        return Expression({self._name: {'$inc': other}})
+        return expressions.Expression({self._name: {'$inc': other}})
 
+    # ==
     def __eq__(self, other):
-        return Expression({self._name: other})
-    
-    def __contains__(self, vals):
-        return Expression({self._name: {'$in': vals}})
+        return expressions.EqualExpression({self._name: other})
 
-    def in_(self, *vals):
-        return Expression({self._name: {'$in': list(vals)}})
+    # !=
+    def __ne__(self, other):
+        return expressions.NotEqualExpression({self._name: {'$ne': other}})
+
+    # <
+    def __lt__(self, other):
+        return expressions.LessThanExpression({self._name: {'$lt': other}})
+
+    # <=
+    def __le__(self, other):
+        return expressions.LessThanEqualExpression({self._name: {'$lte': other}})
+
+    # >
+    def __gt__(self, other):
+        return expressions.GreaterThanExpression({self._name: {'$gt': other}})
+
+    # >=
+    def __ge__(self, other):
+        return expressions.GreaterThanEqualExpression({self._name: {'$gte': other}})
+
+    # %
+#    def __mod__(self, other):
+#        return Expression({self._name: {'$mod': other}})
+
+    # in
+    def in_(self, vals):
+        return expressions.InExpression({self._name: {'$in': vals}})
+
+    # not in
+    def nin(self, vals):
+        return expressions.NotInExpression({self._name: {'$nin': vals}})
+
+    # all
+    def all(self, vals):
+        return expressions.AllExpression({self._name: {'$all': vals}})
+
+    # size
+    def size(self, size):
+        return expressions.SizeExpression({self._name: {'$size': size}})
+    
+    # exists
+    def exists(self):
+        return expressions.ExistsExpression({self._name: {'$exists': True}})
+
+    # exists
+    def type(self, type_):
+        return expressions.TypeExpression({self._name: {'$type': type_}})
 
 class ObjectIdField(Field):
     pass

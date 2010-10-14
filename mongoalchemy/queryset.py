@@ -45,36 +45,3 @@ class Q(object):
     
     def clone(self):
         return Q(self.spec)
-
-class Expression(object):
-    def __init__(self, spec):
-        self.spec = spec
-    
-    # |
-    def __or__(self, other):
-        self.spec = {'$or': [self.spec, other.spec]}
-        return self
-    
-    __ior__ = __or__
-    
-    # &
-    def __and__(self, other):
-        self.spec.update(other.spec)
-        return self
-
-    __iand__ = __and__
-
-    # ~
-    def __invert__(self):
-        if len(self.spec) == 1:
-            v = self.spec.values()[0]
-            
-            if len(v) == 1 and v.has_key('$in'):
-                v['$nin'] = v['$in']
-                del v['$in']
-        
-                return self
-        
-        self.spec = {'$not': self.spec}
-            
-        return self
