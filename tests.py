@@ -5,7 +5,7 @@ class Settings(documents.EmbeddedDocument):
     sound = fields.BooleanField(default=True)
 
 class User(documents.Document):
-    _id = fields.ObjectIdField(primary_key=True)
+    _id = fields.ObjectIdField('_id', primary_key=True)
     username = fields.CharField('username', max_length=5)
     friends = fields.ObjectIdField('friends', multi=True)
     guilds = fields.ObjectIdField('guilds', multi=True)
@@ -100,12 +100,25 @@ class ExpressionTest(TestCase):
 
         # push
         self.assertEqual(User.guilds + 5, {'$push': {'guilds': 5}})
+        self.assertEqual(User.guilds.push(5), {'$push': {'guilds': 5}})
 
         # pushAll
         self.assertEqual(User.guilds + [1, 5], {'$pushAll': {'guilds': [1, 5]}})
+        self.assertEqual(User.guilds.push_all([1, 5]), {'$pushAll': {'guilds': [1, 5]}})
 
         # pull
         self.assertEqual(User.guilds - 5, {'$pull': {'guilds': 5}})
+        self.assertEqual(User.guilds.pull(5), {'$pull': {'guilds': 5}})
 
         # pullAll
         self.assertEqual(User.guilds - [1, 5], {'$pullAll': {'guilds': [1, 5]}})
+        self.assertEqual(User.guilds.pull_all([1, 5]), {'$pullAll': {'guilds': [1, 5]}})
+
+    def test_update(self):
+        self.assertEqual(User.guilds + [2, 5] & User.guilds + [2, 8], {'$pushAll': {'guilds': [2, 5, 2, 8]}})
+        self.assertEqual((User.guilds | 2) & User.guilds + 5, {'$push': {'guilds': 5}, '$addToSet': {'guilds': 2}})
+        self.assertEqual(User.username.set('wamb') & User.username.set('stan'), {'$set': {'username': 'stan'}})
+        self.assertEqual(User.guilds.unset() & User.username.set('stan'), {'$unset': {'guilds': 1}, '$set': {'username': 'stan'}})
+        self.assertEqual(User._id + 2 & User._id - 5, {'$inc': {'_id': -3}})
+        self.assertEqual(User._id + 2 & User._id.dec(2), {'$inc': {'_id': 0}})
+

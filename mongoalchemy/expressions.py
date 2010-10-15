@@ -1,13 +1,50 @@
 import copy
 import types
+import collections
 
-class Expression(object):
+class UpdateExpression(object):
+    def __init__(self, spec):
+        self.spec = spec
+
+    # &
+    def __and__(self, other):
+        spec = collections.defaultdict(dict)
+        spec.update(copy.deepcopy(self.spec))
+
+        for k, v in other.spec.iteritems():
+            if k in ['$pushAll', '$pullAll']:
+                for k2, v2 in v.iteritems():
+                    if k2 in spec[k]:
+                        spec[k][k2].extend(copy.deepcopy(v2))
+                    else:
+                        spec[k][k2] = copy.deepcopy(v2)
+            elif k == '$inc':
+                for k2, v2 in v.iteritems():
+                    if k2 in spec[k]:
+                        spec[k][k2] += v2
+                    else:
+                        spec[k][k2] = v2
+            else:
+                spec[k].update(copy.deepcopy(v))
+
+        return UpdateExpression(dict(spec))
+        
+    def __eq__(self, other):
+        if type(other) == dict:
+            return self.spec == other
+
+        return self == other
+
+    def __repr__(self):
+        return self.spec.__repr__()
+
+class QueryExpression(object):
     def __init__(self, spec):
         self.spec = spec
 
     # |
     def __or__(self, other):
-        return Expression({'$or': [copy.deepcopy(self.spec), copy.deepcopy(other.spec)]})
+        return QueryExpression({'$or': [copy.deepcopy(self.spec), copy.deepcopy(other.spec)]})
 
     __ior__ = __or__
 
@@ -27,13 +64,13 @@ class Expression(object):
 
             spec[k] = copy.deepcopy(v)
 
-        return Expression(spec)
+        return QueryExpression(spec)
 
     __iand__ = __and__
 
     # ~
     def __invert__(self):
-        return Expression(self._invert('$not'))
+        return QueryExpression(self._invert('$not'))
 
     def __eq__(self, other):
         if type(other) == dict:
@@ -63,52 +100,52 @@ class Expression(object):
 
         return spec
 
-class CompoundExpression(Expression):
+class CompoundExpression(QueryExpression):
     def _invert(self, x):
         raise NotImplemented()
 
-class EqualExpression(Expression):
+class EqualExpression(QueryExpression):
     def __invert__(self):
         return NotEqualExpression(self._invert('$ne'))
 
-class NotEqualExpression(Expression):
+class NotEqualExpression(QueryExpression):
     def __invert__(self):
         return LessThanExpression(self._invert('$ne'))
 
-class LessThanExpression(Expression):
+class LessThanExpression(QueryExpression):
     def __invert__(self):
         return GreaterThanEqualExpression(self._swap('$lt', '$gt'))
 
-class GreaterThanExpression(Expression):
+class GreaterThanExpression(QueryExpression):
     def __invert__(self):
         return GreaterThanEqualExpression(self._swap('$gt', '$lt'))
 
-class LessThanEqualExpression(Expression):
+class LessThanEqualExpression(QueryExpression):
     def __invert__(self):
         return GreaterThanEqualExpression(self._swap('$lte', '$gte'))
 
-class GreaterThanEqualExpression(Expression):
+class GreaterThanEqualExpression(QueryExpression):
     def __invert__(self):
         return LessThanEqualExpression(self._swap('$gte', '$lte'))
 
-class ModExpression(Expression):
+class ModExpression(QueryExpression):
     pass
 
-class InExpression(Expression):
+class InExpression(QueryExpression):
     def __invert__(self):
         return NotInExpression(self._swap('$in', '$nin'))
 
-class NotInExpression(Expression):
+class NotInExpression(QueryExpression):
     def __invert__(self):
         return InExpression(self._swap('$nin', '$in'))
 
-class AllExpression(Expression):
+class AllExpression(QueryExpression):
     pass
 
-class SizeExpression(Expression):
+class SizeExpression(QueryExpression):
     pass
 
-class ExistsExpression(Expression):
+class ExistsExpression(QueryExpression):
     def __invert__(self):
         spec = copy.deepcopy(self.spec)
 
@@ -117,11 +154,11 @@ class ExistsExpression(Expression):
 
         return ExistsExpression(spec)
 
-class TypeExpression(Expression):
+class TypeExpression(QueryExpression):
     pass
 
-class WhereExpression(Expression):
+class WhereExpression(QueryExpression):
     pass
 
-class SliceExpression(Expression):
+class SliceExpression(QueryExpression):
     pass

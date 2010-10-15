@@ -2,51 +2,54 @@ from mongoalchemy import expressions
 import types
 
 class Field(object):
-    """
-    TODO: implement the following
-    $elemMatch
-    The $ positional operator
-    """
-
     def __init__(self, name='???', **kwargs): 
-        self._name = name
+        self.name = name
+        self.parent = None
+        self.multi = False
         
         for k,v in kwargs.iteritems():
             setattr(self, k, v)
 
+    @property
+    def key(self):
+        if self.parent and self.multi:
+            return self.parent.key + '.$.' + self.name
+
+        return self.name
+
     # ==
     def __eq__(self, other):
-        return expressions.EqualExpression({self._name: other})
+        return expressions.EqualExpression({self.key: other})
 
     eq = __eq__
 
     # !=
     def __ne__(self, other):
-        return expressions.NotEqualExpression({self._name: {'$ne': other}})
+        return expressions.NotEqualExpression({self.key: {'$ne': other}})
 
     ne = __ne__
 
     # <
     def __lt__(self, other):
-        return expressions.LessThanExpression({self._name: {'$lt': other}})
+        return expressions.LessThanExpression({self.key: {'$lt': other}})
 
     lt = __lt__
 
     # <=
     def __le__(self, other):
-        return expressions.LessThanEqualExpression({self._name: {'$lte': other}})
+        return expressions.LessThanEqualExpression({self.key: {'$lte': other}})
 
     lte = __le__
 
     # >
     def __gt__(self, other):
-        return expressions.GreaterThanExpression({self._name: {'$gt': other}})
+        return expressions.GreaterThanExpression({self.key: {'$gt': other}})
 
     gt = __gt__
 
     # >=
     def __ge__(self, other):
-        return expressions.GreaterThanEqualExpression({self._name: {'$gte': other}})
+        return expressions.GreaterThanEqualExpression({self.key: {'$gte': other}})
 
     gte = __gt__
 
@@ -67,59 +70,57 @@ class Field(object):
 
             ne = __ne__
 
-        return Mod(self._name, other)
+        return Mod(self.key, other)
 
     mod = __mod__
 
     # in
     def in_(self, vals):
-        return expressions.InExpression({self._name: {'$in': vals}})
+        return expressions.InExpression({self.key: {'$in': vals}})
 
     # not in
     def nin(self, vals):
-        return expressions.NotInExpression({self._name: {'$nin': vals}})
+        return expressions.NotInExpression({self.key: {'$nin': vals}})
 
     # all
     def all(self, vals):
-        return expressions.AllExpression({self._name: {'$all': vals}})
+        return expressions.AllExpression({self.key: {'$all': vals}})
 
     # size
     def size(self, size):
-        return expressions.SizeExpression({self._name: {'$size': size}})
+        return expressions.SizeExpression({self.key: {'$size': size}})
     
     # exists
     def exists(self):
-        return expressions.ExistsExpression({self._name: {'$exists': True}})
+        return expressions.ExistsExpression({self.key: {'$exists': True}})
 
     # type
     def type(self, type_):
-        return expressions.TypeExpression({self._name: {'$type': type_}})
+        return expressions.TypeExpression({self.key: {'$type': type_}})
 
     # where
     def where(self, javascript):
-        return expressions.WhereExpression({self._name: {'$where': javascript}})
+        return expressions.WhereExpression({self.key: {'$where': javascript}})
 
     # slice
     def __getitem__(self, key):
         if isinstance(key, slice):
-            return expressions.SliceExpression({self._name: {'$slice': [key.start, key.stop]}})
+            return expressions.SliceExpression({self.key: {'$slice': [key.start, key.stop]}})
             
-        return expressions.SliceExpression({self._name: {'$slice': key}})
+        return expressions.SliceExpression({self.key: {'$slice': key}})
 
     slice = __getitem__
 
     # pop
     def pop(self):
-        return expressions.Expression({'$pop': {self._name: 1}})
+        return expressions.UpdateExpression({'$pop': {self.key: 1}})
 
     def popleft(self):
-        return expressions.Expression({'$pop': {self._name: -1}})
+        return expressions.UpdateExpression({'$pop': {self.key: -1}})
 
     # addToSet
     def __or__(self, val):
-        return expressions.Expression({'$addToSet': {self._name: val}})
-
-    __ior__ = __or__
+        return expressions.UpdateExpression({'$addToSet': {self.key: val}})
 
     # rename
     def rename(self, *args, **kwargs):
@@ -127,35 +128,57 @@ class Field(object):
 
     # set
     def set(self, val):
-        return expressions.Expression({'$set': {self._name: val}})
+        return expressions.UpdateExpression({'$set': {self.key: val}})
 
     # unset
     def unset(self):
-        return expressions.Expression({'$unset': {self._name: 1}})
+        return expressions.UpdateExpression({'$unset': {self.key: 1}})
 
     # + (inc/push)
     def __add__(self, val=1):
-        if getattr(self, 'multi', False):
+        if self.multi:
             if type(val) in [types.ListType, types.TupleType]:
-                return expressions.Expression({'$pushAll': {self._name: val}})
+                return self.push_all(val)
             else:
-                return expressions.Expression({'$push': {self._name: val}})
+                return self.push(val)
 
-        return expressions.Expression({'$inc': {self._name: val}})
+        return expressions.UpdateExpression({'$inc': {self.key: val}})
 
-    inc = __iadd__ = __add__
+    inc = __add__
+
+    # push
+    def push(self, val):
+        return expressions.UpdateExpression({'$push': {self.key: val}})
+
+    # pushAll
+    def push_all(self, val):
+        if type(val) not in [types.ListType, types.TupleType]:
+            raise TypeError()
+        
+        return expressions.UpdateExpression({'$pushAll': {self.key: val}})
 
     # - (pull)
     def __sub__(self, val=1):
-        if getattr(self, 'multi', False):
+        if self.multi:
             if type(val) in [types.ListType, types.TupleType]:
-                return expressions.Expression({'$pullAll': {self._name: val}})
+                return self.pull_all(val)
             else:
-                return expressions.Expression({'$pull': {self._name: val}})
+                return self.pull(val)
 
-        return expressions.Expression({'$inc': {self._name: -val}})
+        return expressions.UpdateExpression({'$inc': {self.key: -val}})
 
-    dec = __isub__ = __sub__
+    # push
+    def pull(self, val):
+        return expressions.UpdateExpression({'$pull': {self.key: val}})
+
+    # pushAll
+    def pull_all(self, val):
+        if type(val) not in [types.ListType, types.TupleType]:
+            raise TypeError()
+
+        return expressions.UpdateExpression({'$pullAll': {self.key: val}})
+
+    dec = __sub__
 
 class ObjectIdField(Field):
     pass
