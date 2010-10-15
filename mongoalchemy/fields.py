@@ -1,24 +1,18 @@
 from mongoalchemy import expressions
+import types
 
 class Field(object):
     """
     TODO: implement the following
     $elemMatch
-    $inc
-    $set
-    $unset
-    $push
-    $pushAll
-    $addToSet
-    $pop
-    $pull
-    $pullAll
-    $rename
     The $ positional operator
     """
 
     def __init__(self, name='???', **kwargs): 
         self._name = name
+        
+        for k,v in kwargs.iteritems():
+            setattr(self, k, v)
 
     # ==
     def __eq__(self, other):
@@ -113,6 +107,55 @@ class Field(object):
         return expressions.SliceExpression({self._name: {'$slice': key}})
 
     slice = __getitem__
+
+    # pop
+    def pop(self):
+        return expressions.Expression({'$pop': {self._name: 1}})
+
+    def popleft(self):
+        return expressions.Expression({'$pop': {self._name: -1}})
+
+    # addToSet
+    def __or__(self, val):
+        return expressions.Expression({'$addToSet': {self._name: val}})
+
+    __ior__ = __or__
+
+    # rename
+    def rename(self, *args, **kwargs):
+        raise NotImplementedError('$rename not supported')
+
+    # set
+    def set(self, val):
+        return expressions.Expression({'$set': {self._name: val}})
+
+    # unset
+    def unset(self):
+        return expressions.Expression({'$unset': {self._name: 1}})
+
+    # + (inc/push)
+    def __add__(self, val=1):
+        if getattr(self, 'multi', False):
+            if type(val) in [types.ListType, types.TupleType]:
+                return expressions.Expression({'$pushAll': {self._name: val}})
+            else:
+                return expressions.Expression({'$push': {self._name: val}})
+
+        return expressions.Expression({'$inc': {self._name: val}})
+
+    inc = __iadd__ = __add__
+
+    # - (pull)
+    def __sub__(self, val=1):
+        if getattr(self, 'multi', False):
+            if type(val) in [types.ListType, types.TupleType]:
+                return expressions.Expression({'$pullAll': {self._name: val}})
+            else:
+                return expressions.Expression({'$pull': {self._name: val}})
+
+        return expressions.Expression({'$inc': {self._name: -val}})
+
+    dec = __isub__ = __sub__
 
 class ObjectIdField(Field):
     pass

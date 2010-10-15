@@ -8,7 +8,7 @@ class User(documents.Document):
     _id = fields.ObjectIdField(primary_key=True)
     username = fields.CharField('username', max_length=5)
     friends = fields.ObjectIdField('friends', multi=True)
-    guilds = fields.ObjectIdField('test', multi=True)
+    guilds = fields.ObjectIdField('guilds', multi=True)
     settings = Settings
     
     class Meta:
@@ -76,3 +76,33 @@ class ExpressionTest(TestCase):
         # slice
         self.assertEqual(User.username[5], {'username': {'$slice': 5}})
         self.assertEqual(User.username[5:-1], {'username': {'$slice': [5, -1]}})
+
+        # pop
+        self.assertEqual(User.username.pop(), {'$pop': {'username': 1}})
+        self.assertEqual(User.username.popleft(), {'$pop': {'username': -1}})
+
+        # addToset
+        self.assertEqual(User.username | 5, {'$addToSet': {'username': 5}})
+
+        # set
+        self.assertEqual(User.username.set(5), {'$set': {'username': 5}})
+
+        # unset
+        self.assertEqual(User.username.unset(), {'$unset': {'username': 1}})
+
+        # inc/push
+        self.assertEqual(User.username.inc(), {'$inc': {'username': 1}})
+        self.assertEqual(User.username.inc(5), {'$inc': {'username': 5}})
+        self.assertEqual(User.username + 5, {'$inc': {'username': 5}})
+
+        self.assertEqual(User.guilds + 5, {'$push': {'guilds': 5}})
+        self.assertEqual(User.guilds + [1, 5], {'$pushAll': {'guilds': [1, 5]}})
+
+
+        # dec/pull
+        self.assertEqual(User.username.dec(), {'$inc': {'username': -1}})
+        self.assertEqual(User.username.dec(5), {'$inc': {'username': -5}})
+        self.assertEqual(User.username - 5, {'$inc': {'username': -5}})
+
+        self.assertEqual(User.guilds - 5, {'$pull': {'guilds': 5}})
+        self.assertEqual(User.guilds - [1, 5], {'$pullAll': {'guilds': [1, 5]}})
