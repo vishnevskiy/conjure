@@ -2,33 +2,10 @@ import copy
 import types
 import collections
 
-class UpdateExpression(object):
+class Expression(object):
     def __init__(self, spec):
         self.spec = spec
 
-    # &
-    def __and__(self, other):
-        spec = collections.defaultdict(dict)
-        spec.update(copy.deepcopy(self.spec))
-
-        for k, v in other.spec.iteritems():
-            if k in ['$pushAll', '$pullAll']:
-                for k2, v2 in v.iteritems():
-                    if k2 in spec[k]:
-                        spec[k][k2].extend(copy.deepcopy(v2))
-                    else:
-                        spec[k][k2] = copy.deepcopy(v2)
-            elif k == '$inc':
-                for k2, v2 in v.iteritems():
-                    if k2 in spec[k]:
-                        spec[k][k2] += v2
-                    else:
-                        spec[k][k2] = v2
-            else:
-                spec[k].update(copy.deepcopy(v))
-
-        return UpdateExpression(dict(spec))
-        
     def __eq__(self, other):
         if type(other) == dict:
             return self.spec == other
@@ -38,31 +15,51 @@ class UpdateExpression(object):
     def __repr__(self):
         return self.spec.__repr__()
 
-class QueryExpression(object):
-    def __init__(self, spec):
-        self.spec = spec
+    def clone(self):
+        return copy.deepcopy(self.spec)
 
+class UpdateExpression(Expression):
+    # &
+    def __and__(self, other):
+        spec = collections.defaultdict(dict)
+        spec.update(self.clone())
+
+        for k, v in other.clone().iteritems():
+            if k in ['$pushAll', '$pullAll']:
+                for k2, v2 in v.iteritems():
+                    if k2 in spec[k]:
+                        spec[k][k2].extend(v2)
+                    else:
+                        spec[k][k2] = v2
+            elif k == '$inc':
+                for k2, v2 in v.iteritems():
+                    if k2 in spec[k]:
+                        spec[k][k2] += v2
+                    else:
+                        spec[k][k2] = v2
+            else:
+                spec[k].update(v)
+
+        return UpdateExpression(dict(spec))
+
+class QueryExpression(Expression):
     # |
     def __or__(self, other):
-        return QueryExpression({'$or': [copy.deepcopy(self.spec), copy.deepcopy(other.spec)]})
+        return QueryExpression({'$or': [self.clone(), other.clone()]})
 
     __ior__ = __or__
 
     # &
     def __and__(self, other):
-        spec = copy.deepcopy(self.spec)
+        spec = self.clone()
 
-        for k, v in other.iteritems():
+        for k, v in other.clone().iteritems():
             if v != None and type(v) == type(spec.get(k)):
                 if k == '$or' and type(v) == types.ListType:
                     spec[k].extend(v)
                     continue
-                elif type(v) == types.DictType:
-                    for k2, v2 in v.iteritems():
-                        pass
 
-
-            spec[k] = copy.deepcopy(v)
+            spec[k] = v
 
         return QueryExpression(spec)
 
@@ -72,31 +69,22 @@ class QueryExpression(object):
     def __invert__(self):
         return QueryExpression(self._invert('$not'))
 
-    def __eq__(self, other):
-        if type(other) == dict:
-            return self.spec == other
-
-        return self == other
-
-    def __repr__(self):
-        return self.spec.__repr__()
-
     def _invert(self, x):
         spec = {}
 
-        for k, v in self.spec.iteritems():
+        for k, v in self.clone().iteritems():
             if type(v) == types.DictType and x in v:
-                spec[k] = copy.deepcopy(v[x])
+                spec[k] = v[x]
             else:
-                spec[k] = {x: copy.deepcopy(v)}
+                spec[k] = {x: v}
 
         return spec
 
     def _swap(self, x, y):
         spec = {}
 
-        for k, v in self.spec.iteritems():
-            spec[k] = {y: copy.deepcopy(v[x])}
+        for k, v in self.clone().iteritems():
+            spec[k] = {y: v[x]}
 
         return spec
 
@@ -147,7 +135,7 @@ class SizeExpression(QueryExpression):
 
 class ExistsExpression(QueryExpression):
     def __invert__(self):
-        spec = copy.deepcopy(self.spec)
+        spec = self.clone()
 
         for v in spec.itervalues():
             v['$exists'] = not v['$exists']
