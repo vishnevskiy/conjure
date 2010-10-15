@@ -33,8 +33,19 @@ class Field(object):
         return expressions.GreaterThanEqualExpression({self._name: {'$gte': other}})
 
     # %
-#    def __mod__(self, other):
-#        return Expression({self._name: {'$mod': other}})
+    def __mod__(self, other):
+        class Mod(object):
+            def __init__(self, name, a):
+                self.name = name
+                self.a = a
+
+            def __eq__(self, b):
+                return expressions.Expression({self.name: {'$mod': [self.a, b]}})
+
+            def __ne__(self, b):
+                return expressions.Expression({self.name: {'$not': {'$mod': [self.a, b]}}})
+
+        return Mod(self._name, other)
 
     # in
     def in_(self, vals):

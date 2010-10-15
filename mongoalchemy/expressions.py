@@ -14,7 +14,19 @@ class Expression(object):
     # &
     def __and__(self, other):
         spec = copy.deepcopy(self.spec)
-        spec.update(copy.deepcopy(other.spec))
+
+        for k, v in other.iteritems():
+            if v != None and type(v) == type(spec.get(k)):
+                if k == '$or' and type(v) == types.ListType:
+                    spec[k].extend(v)
+                    continue
+                elif type(v) == types.DictType:
+                    for k2, v2 in v.iteritems():
+                        pass
+
+
+            spec[k] = copy.deepcopy(v)
+
         return Expression(spec)
 
     __iand__ = __and__
@@ -52,7 +64,8 @@ class Expression(object):
         return spec
 
 class CompoundExpression(Expression):
-    pass
+    def _invert(self, x):
+        raise NotImplemented()
 
 class EqualExpression(Expression):
     def __invert__(self):
@@ -77,6 +90,9 @@ class LessThanEqualExpression(Expression):
 class GreaterThanEqualExpression(Expression):
     def __invert__(self):
         return LessThanEqualExpression(self._swap('$gte', '$lte'))
+
+class ModExpression(Expression):
+    pass
 
 class InExpression(Expression):
     def __invert__(self):

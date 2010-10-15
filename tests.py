@@ -14,8 +14,8 @@ class User(documents.Document):
     class Meta:
         indexes = ['username', '-friends']
 
-class QueryBuilderTest(TestCase):
-    def test_cmp(self):
+class ExpressionTest(TestCase):
+    def test_basic(self):
         # eq
         self.assertEqual(User.username == 5, {'username': 5})
         self.assertEqual(~(User.username != 5), {'username': 5})
@@ -40,6 +40,11 @@ class QueryBuilderTest(TestCase):
         self.assertEqual(User.username >= 5, {'username': {'$gte': 5}})
         self.assertEqual(~(User.username <= 5), {'username': {'$gte': 5}})
 
+        # mod
+        self.assertEqual(User.username % 10 == 0, {'username': {'$mod': [10, 0]}})
+        self.assertEqual(User.username % 10 != 0, {'username': {'$not': {'$mod': [10, 0]}}})
+        self.assertEqual(~(User.username % 10 == 0), {'username': {'$not': {'$mod': [10, 0]}}})
+        
         # in
         self.assertEqual(User.username.in_([2, 5]), {'username': {'$in': [2 ,5]}})
         self.assertEqual(~User.username.nin([2, 5]), {'username': {'$in': [2 ,5]}})
