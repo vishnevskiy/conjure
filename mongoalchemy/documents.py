@@ -1,12 +1,12 @@
-from mongoalchemy.queryset import Q
-from mongoalchemy import expressions
+from mongoalchemy import expressions, queryset
 
-class Document(object):
-    objects = Q()
-
+class BaseDocument(object):
     @staticmethod
     def setAll(values):
         return expressions.UpdateExpression({'$set': values})
 
-class EmbeddedDocument(Document):
+class Document(BaseDocument):
+    objects = queryset.Manager()
+
+class EmbeddedDocument(BaseDocument):
     pass

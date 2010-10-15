@@ -2,7 +2,7 @@ from mongoalchemy import expressions
 import types
 
 class Field(object):
-    def __init__(self, name='???', **kwargs): 
+    def __init__(self, name, **kwargs):
         self.name = name
         self.parent = None
         self.multi = False

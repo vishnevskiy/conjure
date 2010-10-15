@@ -2,7 +2,7 @@ from mongoalchemy import fields, documents, constants
 from unittest import TestCase
 
 class Settings(documents.EmbeddedDocument):
-    sound = fields.BooleanField(default=True)
+    sound = fields.BooleanField('sound', default=True)
 
 class User(documents.Document):
     _id = fields.ObjectIdField('_id', primary_key=True)
