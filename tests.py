@@ -115,6 +115,7 @@ class ExpressionTest(TestCase):
         self.assertEqual(User.guilds.pull_all([1, 5]), {'$pullAll': {'guilds': [1, 5]}})
 
     def test_update(self):
+        self.assertEqual(User.setAll({'x': 2, 'y': 3}) & User.username.set(2), {'$set': {'y': 3, 'x': 2, 'username': 2}})
         self.assertEqual(User.guilds + [2, 5] & User.guilds + [2, 8], {'$pushAll': {'guilds': [2, 5, 2, 8]}})
         self.assertEqual((User.guilds | 2) & User.guilds + 5, {'$push': {'guilds': 5}, '$addToSet': {'guilds': 2}})
         self.assertEqual(User.username.set('wamb') & User.username.set('stan'), {'$set': {'username': 'stan'}})
@@ -122,3 +123,8 @@ class ExpressionTest(TestCase):
         self.assertEqual(User._id + 2 & User._id - 5, {'$inc': {'_id': -3}})
         self.assertEqual(User._id + 2 & User._id.dec(2), {'$inc': {'_id': 0}})
 
+        # realistic test
+        update = User.username.set(2) & User.guilds.push(5) & User.friends.pop()
+        update &= User.friends.push(10)
+        
+        self.assertEqual(update, {'$set': {'username': 2}, '$push': {'friends': 10, 'guilds': 5}, '$pop': {'friends': 1}})

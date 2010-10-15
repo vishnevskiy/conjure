@@ -129,7 +129,7 @@ class Field(object):
     # set
     def set(self, val):
         return expressions.UpdateExpression({'$set': {self.key: val}})
-
+    
     # unset
     def unset(self):
         return expressions.UpdateExpression({'$unset': {self.key: 1}})

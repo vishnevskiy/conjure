@@ -3,6 +3,10 @@ from mongoalchemy import expressions
 
 class Document(object):
     objects = Q()
-    
-class EmbeddedDocument(object):
+
+    @staticmethod
+    def setAll(values):
+        return expressions.UpdateExpression({'$set': values})
+
+class EmbeddedDocument(Document):
     pass
