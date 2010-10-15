@@ -16,6 +16,8 @@ class User(documents.Document):
 
 class ExpressionTest(TestCase):
     def test_basic(self):
+        print User.objects
+
         # eq
         self.assertEqual(User.username == 5, {'username': 5})
         self.assertEqual(~(User.username != 5), {'username': 5})

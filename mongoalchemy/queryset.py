@@ -14,15 +14,29 @@ class QuerySet(object):
     def ensure_index(self, key_or_list):
         pass
 
+    def find(self, *expressions):
+        # same as filter(User.username == 'Stanislav').all()
+        pass
+
+    def find_one(self, *expressions):
+        # same as filter(User.username == 'Stanislav').one()
+        pass
+
     def filter(self, *expressions):
+        # build a query, chains
         pass
 
     def filter_by(self, **query):
+        # build a query, chains
         # allows just doing username='stanislav', email='vishnevskiy@gmail.com'
         pass
 
     def one(self):
         # calls find_one
+        pass
+
+    def first(self):
+        # similar to one, but will throw DoesNotExist
         pass
 
     def all(self):
@@ -73,6 +87,10 @@ class QuerySet(object):
         pass
 
     def delete(self):
+        pass
+
+    def remove(self):
+        # alias for delete
         pass
 
     def update(self):
