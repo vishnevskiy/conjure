@@ -90,19 +90,22 @@ class ExpressionTest(TestCase):
         # unset
         self.assertEqual(User.username.unset(), {'$unset': {'username': 1}})
 
-        # inc/push
+        # inc/dec
         self.assertEqual(User.username.inc(), {'$inc': {'username': 1}})
         self.assertEqual(User.username.inc(5), {'$inc': {'username': 5}})
         self.assertEqual(User.username + 5, {'$inc': {'username': 5}})
-
-        self.assertEqual(User.guilds + 5, {'$push': {'guilds': 5}})
-        self.assertEqual(User.guilds + [1, 5], {'$pushAll': {'guilds': [1, 5]}})
-
-
-        # dec/pull
         self.assertEqual(User.username.dec(), {'$inc': {'username': -1}})
         self.assertEqual(User.username.dec(5), {'$inc': {'username': -5}})
         self.assertEqual(User.username - 5, {'$inc': {'username': -5}})
 
+        # push
+        self.assertEqual(User.guilds + 5, {'$push': {'guilds': 5}})
+
+        # pushAll
+        self.assertEqual(User.guilds + [1, 5], {'$pushAll': {'guilds': [1, 5]}})
+
+        # pull
         self.assertEqual(User.guilds - 5, {'$pull': {'guilds': 5}})
+
+        # pullAll
         self.assertEqual(User.guilds - [1, 5], {'$pullAll': {'guilds': [1, 5]}})
