@@ -122,3 +122,6 @@ class TypeExpression(Expression):
 
 class WhereExpression(Expression):
     pass
+
+class SliceExpression(Expression):
+    pass

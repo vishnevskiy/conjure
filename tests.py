@@ -72,3 +72,7 @@ class ExpressionTest(TestCase):
         # where
         self.assertEqual(User.username.where('this.username == 5'), {'username': {'$where': 'this.username == 5'}})
         self.assertEqual(~User.username.where('this.username == 5'), {'username': {'$not': {'$where': 'this.username == 5'}}})
+
+        # slice
+        self.assertEqual(User.username[5], {'username': {'$slice': 5}})
+        self.assertEqual(User.username[5:-1], {'username': {'$slice': [5, -1]}})

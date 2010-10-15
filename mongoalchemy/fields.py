@@ -3,8 +3,7 @@ from mongoalchemy import expressions
 class Field(object):
     """
     TODO: implement the following
-    $elementMatch
-    $slice
+    $elemMatch
     $inc
     $set
     $unset
@@ -25,25 +24,37 @@ class Field(object):
     def __eq__(self, other):
         return expressions.EqualExpression({self._name: other})
 
+    eq = __eq__
+
     # !=
     def __ne__(self, other):
         return expressions.NotEqualExpression({self._name: {'$ne': other}})
+
+    ne = __ne__
 
     # <
     def __lt__(self, other):
         return expressions.LessThanExpression({self._name: {'$lt': other}})
 
+    lt = __lt__
+
     # <=
     def __le__(self, other):
         return expressions.LessThanEqualExpression({self._name: {'$lte': other}})
+
+    lte = __le__
 
     # >
     def __gt__(self, other):
         return expressions.GreaterThanExpression({self._name: {'$gt': other}})
 
+    gt = __gt__
+
     # >=
     def __ge__(self, other):
         return expressions.GreaterThanEqualExpression({self._name: {'$gte': other}})
+
+    gte = __gt__
 
     # %
     def __mod__(self, other):
@@ -53,12 +64,18 @@ class Field(object):
                 self.a = a
 
             def __eq__(self, b):
-                return expressions.Expression({self.name: {'$mod': [self.a, b]}})
+                return expressions.ModExpression({self.name: {'$mod': [self.a, b]}})
+
+            eq = __eq__
 
             def __ne__(self, b):
-                return expressions.Expression({self.name: {'$not': {'$mod': [self.a, b]}}})
+                return expressions.ModExpression({self.name: {'$not': {'$mod': [self.a, b]}}})
+
+            ne = __ne__
 
         return Mod(self._name, other)
+
+    mod = __mod__
 
     # in
     def in_(self, vals):
@@ -88,6 +105,14 @@ class Field(object):
     def where(self, javascript):
         return expressions.WhereExpression({self._name: {'$where': javascript}})
 
+    # slice
+    def __getitem__(self, key):
+        if isinstance(key, slice):
+            return expressions.SliceExpression({self._name: {'$slice': [key.start, key.stop]}})
+            
+        return expressions.SliceExpression({self._name: {'$slice': key}})
+
+    slice = __getitem__
 
 class ObjectIdField(Field):
     pass
