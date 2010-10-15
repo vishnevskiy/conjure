@@ -1,12 +1,25 @@
 from mongoalchemy import expressions
 
-class Field(object): 
+class Field(object):
+    """
+    TODO: implement the following
+    $elementMatch
+    $slice
+    $inc
+    $set
+    $unset
+    $push
+    $pushAll
+    $addToSet
+    $pop
+    $pull
+    $pullAll
+    $rename
+    The $ positional operator
+    """
+
     def __init__(self, name='???', **kwargs): 
         self._name = name
-
-    # +
-    def __add__(self, other):
-        return expressions.Expression({self._name: {'$inc': other}})
 
     # ==
     def __eq__(self, other):
@@ -67,9 +80,14 @@ class Field(object):
     def exists(self):
         return expressions.ExistsExpression({self._name: {'$exists': True}})
 
-    # exists
+    # type
     def type(self, type_):
         return expressions.TypeExpression({self._name: {'$type': type_}})
+
+    # where
+    def where(self, javascript):
+        return expressions.WhereExpression({self._name: {'$where': javascript}})
+
 
 class ObjectIdField(Field):
     pass

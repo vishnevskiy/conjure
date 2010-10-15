@@ -119,3 +119,6 @@ class ExistsExpression(Expression):
 
 class TypeExpression(Expression):
     pass
+
+class WhereExpression(Expression):
+    pass

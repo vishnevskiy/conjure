@@ -68,3 +68,7 @@ class ExpressionTest(TestCase):
         # type
         self.assertEqual(User.username.type(constants.ARRAY), {'username': {'$type': 4}})
         self.assertEqual(~User.username.type(constants.ARRAY), {'username': {'$not': {'$type': 4}}})
+
+        # where
+        self.assertEqual(User.username.where('this.username == 5'), {'username': {'$where': 'this.username == 5'}})
+        self.assertEqual(~User.username.where('this.username == 5'), {'username': {'$not': {'$where': 'this.username == 5'}}})
