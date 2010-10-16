@@ -1,15 +1,25 @@
 import types
+from mongoalchemy.connection import connect
 
 class Manager(object):
+    def __init__(self):
+        self._collection = None
+
     def __get__(self, instance, owner):
         if instance is not None:
             return self
 
-        return QuerySet()
+        if self._collection is None:
+            db = connect(owner._meta['db'])
+            self._collection = db[owner._meta['collection']]
 
-class QuerySet(object):
-    def __init__(self, spec=None):
-        self.spec = spec or dict()
+        return Spec(owner, self._collection)
+
+class Spec(object):
+    def __init__(self, document_cls, collection):
+        self._document_cls = document_cls
+        self._collection = collection
+        self._spec = {}
 
     def ensure_index(self, key_or_list):
         pass
@@ -112,4 +122,4 @@ class QuerySet(object):
         pass
 
     def __repr__(self):
-        return self.spec.__repr__()
+        return self._spec.__repr__()

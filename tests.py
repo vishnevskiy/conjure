@@ -2,17 +2,26 @@ from mongoalchemy import fields, documents, constants
 from unittest import TestCase
 
 class Settings(documents.EmbeddedDocument):
-    sound = fields.BooleanField('sound', default=True)
+    sound = fields.BooleanField(default=True)
+
+print Settings._meta
 
 class User(documents.Document):
-    _id = fields.ObjectIdField('_id', primary_key=True)
-    username = fields.CharField('username', max_length=5)
-    friends = fields.ObjectIdField('friends', multi=True)
-    guilds = fields.ObjectIdField('guilds', multi=True)
+    _id = fields.ObjectIdField()
+    username = fields.CharField()
+    friends = fields.ListField()
+    guilds = fields.ListField()
     settings = Settings
-    
+
+    def __unicode__(self):
+        return self.username
+
     class Meta:
         indexes = ['username', '-friends']
+
+user = User(_id=1, username='stanislav')
+print repr(user)
+
 
 class ExpressionTest(TestCase):
     def test_basic(self):
@@ -117,7 +126,6 @@ class ExpressionTest(TestCase):
         self.assertEqual(User.guilds.pull_all([1, 5]), {'$pullAll': {'guilds': [1, 5]}})
 
     def test_update(self):
-        self.assertEqual(User.setAll({'x': 2, 'y': 3}) & User.username.set(2), {'$set': {'y': 3, 'x': 2, 'username': 2}})
         self.assertEqual(User.guilds + [2, 5] & User.guilds + [2, 8], {'$pushAll': {'guilds': [2, 5, 2, 8]}})
         self.assertEqual((User.guilds | 2) & User.guilds + 5, {'$push': {'guilds': 5}, '$addToSet': {'guilds': 2}})
         self.assertEqual(User.username.set('wamb') & User.username.set('stan'), {'$set': {'username': 'stan'}})
