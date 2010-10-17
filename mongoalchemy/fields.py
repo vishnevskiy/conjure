@@ -2,10 +2,13 @@ from mongoalchemy import expressions
 import types
 
 class Field(object):
-    def __init__(self, required=False, default=None):
+    def __init__(self, verbose_name=None, blank=False, default=None, validators=None, choices=None):
         self.name = None
+        self.verbose_name = verbose_name
         self.default = default
-        self.required = required
+        self.blank = blank
+        self.validators = validators
+        self.choices = choices
 
     def __get__(self, instance, owner):
         if instance is None:
@@ -69,7 +72,57 @@ class Field(object):
 
     gte = __gt__
 
-    # %
+    # in
+    def in_(self, vals):
+        return expressions.InExpression({self.name: {'$in': vals}})
+
+    # not in
+    def nin(self, vals):
+        return expressions.NotInExpression({self.name: {'$nin': vals}})
+    
+    # exists
+    def exists(self):
+        return expressions.ExistsExpression({self.name: {'$exists': True}})
+
+    # type
+    def type(self, type_):
+        return expressions.TypeExpression({self.name: {'$type': type_}})
+
+    # where
+    def where(self, javascript):
+        return expressions.WhereExpression({self.name: {'$where': javascript}})
+
+    # rename
+    def rename(self, *args, **kwargs):
+        raise NotImplementedError('$rename not supported')
+
+    # set
+    def set(self, val):
+        return expressions.UpdateExpression({'$set': {self.name: val}})
+    
+    # unset
+    def unset(self):
+        return expressions.UpdateExpression({'$unset': {self.name: 1}})
+
+class ObjectIdField(Field):
+    pass
+    
+class CharField(Field):
+    pass
+
+class IntegerField(Field):
+    # inc +
+    def __add__(self, val=1):
+        return expressions.UpdateExpression({'$inc': {self.name: val}})
+
+    inc = __add__
+
+    def __sub__(self, val=1):
+        return expressions.UpdateExpression({'$inc': {self.name: -val}})
+
+    dec = __sub__
+
+    # mod %
     def __mod__(self, other):
         class Mod(object):
             def __init__(self, name, a):
@@ -90,14 +143,7 @@ class Field(object):
 
     mod = __mod__
 
-    # in
-    def in_(self, vals):
-        return expressions.InExpression({self.name: {'$in': vals}})
-
-    # not in
-    def nin(self, vals):
-        return expressions.NotInExpression({self.name: {'$nin': vals}})
-
+class ListField(Field):
     # all
     def all(self, vals):
         return expressions.AllExpression({self.name: {'$all': vals}})
@@ -105,24 +151,12 @@ class Field(object):
     # size
     def size(self, size):
         return expressions.SizeExpression({self.name: {'$size': size}})
-    
-    # exists
-    def exists(self):
-        return expressions.ExistsExpression({self.name: {'$exists': True}})
-
-    # type
-    def type(self, type_):
-        return expressions.TypeExpression({self.name: {'$type': type_}})
-
-    # where
-    def where(self, javascript):
-        return expressions.WhereExpression({self.name: {'$where': javascript}})
 
     # slice
     def __getitem__(self, key):
         if isinstance(key, slice):
             return expressions.SliceExpression({self.name: {'$slice': [key.start, key.stop]}})
-            
+
         return expressions.SliceExpression({self.name: {'$slice': key}})
 
     slice = __getitem__
@@ -136,65 +170,12 @@ class Field(object):
 
     # addToSet
     def __or__(self, val):
+        return self.add_to_set(val)
+
+    def add_to_set(self, val):
         return expressions.UpdateExpression({'$addToSet': {self.name: val}})
 
-    # rename
-    def rename(self, *args, **kwargs):
-        raise NotImplementedError('$rename not supported')
-
-    # set
-    def set(self, val):
-        return expressions.UpdateExpression({'$set': {self.name: val}})
-    
-    # unset
-    def unset(self):
-        return expressions.UpdateExpression({'$unset': {self.name: 1}})
-
-    # + (inc/push)
-    def __add__(self, val=1):
-        return expressions.UpdateExpression({'$inc': {self.name: val}})
-
-    inc = __add__
-
     # push
-    def push(self, val):
-        return expressions.UpdateExpression({'$push': {self.name: val}})
-
-    # pushAll
-    def push_all(self, val):
-        if type(val) not in [types.ListType, types.TupleType]:
-            raise TypeError()
-        
-        return expressions.UpdateExpression({'$pushAll': {self.name: val}})
-
-    # - (pull)
-    def __sub__(self, val=1):
-        return expressions.UpdateExpression({'$inc': {self.name: -val}})
-
-    # push
-    def pull(self, val):
-        return expressions.UpdateExpression({'$pull': {self.name: val}})
-
-    # pushAll
-    def pull_all(self, val):
-        if type(val) not in [types.ListType, types.TupleType]:
-            raise TypeError()
-
-        return expressions.UpdateExpression({'$pullAll': {self.name: val}})
-
-    dec = __sub__
-
-class ObjectIdField(Field):
-    pass
-    
-class CharField(Field):
-    pass
-
-class IntegerField(Field):
-    pass
-
-class ListField(Field):
-    # + (inc/push)
     def __add__(self, val=1):
         if type(val) in [types.ListType, types.TupleType]:
             return self.push_all(val)
@@ -203,7 +184,17 @@ class ListField(Field):
 
     inc = __add__
 
-    # - (pull)
+    def push(self, val):
+        return expressions.UpdateExpression({'$push': {self.name: val}})
+
+    # pushAll
+    def push_all(self, val):
+        if type(val) not in [types.ListType, types.TupleType]:
+            raise TypeError()
+
+        return expressions.UpdateExpression({'$pushAll': {self.name: val}})
+
+    # pull
     def __sub__(self, val=1):
         if type(val) in [types.ListType, types.TupleType]:
             return self.pull_all(val)
@@ -211,6 +202,16 @@ class ListField(Field):
             return self.pull(val)
 
     dec = __sub__
+
+    def pull(self, val):
+        return expressions.UpdateExpression({'$pull': {self.name: val}})
+
+    # pullAll
+    def pull_all(self, val):
+        if type(val) not in [types.ListType, types.TupleType]:
+            raise TypeError()
+
+        return expressions.UpdateExpression({'$pullAll': {self.name: val}})
 
 class BooleanField(Field):
     pass

@@ -1,5 +1,6 @@
 import types
 from mongoalchemy.connection import connect
+from mongoalchemy.utils import transform_keys
 
 class Manager(object):
     def __init__(self):
@@ -59,28 +60,40 @@ class Spec(object):
 
     def in_bulk(self, object_ids):
         # queries by list of object ids and returns a map
-        pass
+        return  dict([(doc._id, doc) for doc in self._collection.find({'_id': {'$in': object_ids}})])
 
     def next(self):
         # get next from cursor
-        pass
+        try:
+            if self._limit == 0:
+                raise StopIteration
+            #return self._document._from_son(self._cursor.next())
+        except StopIteration, e:
+            self.rewind()
+            raise e
     
     def rewind(self):
         # rewind the cursor
-        pass
+        self._cursor.rewind()
+        return self
 
     def count(self):
         # number of objects returned by query
-        pass
+        return self._cursor.count(with_limit_and_skip=True)
 
     def __len__(self):
         return self.count()
 
     def limit(self, n):
-        pass
+        n = n or 1
+        self._cursor.limit(n)
+        self._limit = n
+        return self
 
     def skip(self, n):
-        pass
+        self._cursor.skip(n)
+        self._skip = n
+        return self
 
     def __getitem__(self, key):
         # will allow limit/skip/index
@@ -90,18 +103,23 @@ class Spec(object):
         # list of fields to bring from db, defaults to all
         pass
 
-    def sort(self, *keys):
-        pass
+    def sort(self, keys):
+        keys = transform_keys(keys)
+        self._ordering = keys
+        self._cursor.sort(keys)
+        return self
 
-    def explain(self):
-        pass
+    def explain(self, pretty=False):
+        plan = self._cursor.explain()
 
-    def delete(self):
-        pass
+        if pretty:
+            import pprint
+            plan = pprint.pformat(plan)
 
-    def remove(self):
-        # alias for delete
-        pass
+        return plan
+
+    def delete(self, safe=False):
+        return self._collection.remove(self._spec, safe=safe)
 
     def update(self):
         # uses multi=True

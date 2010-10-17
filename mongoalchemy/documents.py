@@ -3,11 +3,6 @@ import copy
 
 _cls_index = {}
 
-class _Meta(object):
-    db = 'mongodb://localhost:27017/main'
-    ordering = []
-    indexes = []
-
 class DocumentMetaclass(type):
     def __new__(cls, name, bases, attrs):
         metaclass = attrs.get('__metaclass__')
@@ -18,13 +13,26 @@ class DocumentMetaclass(type):
 
         _fields = {}
 
-        _meta = {
-            'db': 'mongodb://localhost:27017/main',
-            'collection': name.lower() + 's',
-            'ordering': [],
-            'indexes': [],
-            'embedded': False
-        }
+        Meta = attrs.pop('Meta', None)
+
+        if Meta and getattr(Meta, 'embedded', True):
+            _meta = {
+                'embedded': True
+            }
+        else:
+            _meta = {
+                'db': 'mongodb://localhost:27017/main',
+                'collection': name.lower() + 's',
+                'sorting': [],
+                'get_latest_by': [],
+                'indexes': [],
+                'embedded': False
+            }
+
+        _meta.update({
+            'verbose_name': name.lower(),
+            'verbose_name_plural': name.lower() + 's',
+         })
 
         for base in bases:
             if hasattr(base, '_fields'):
@@ -60,9 +68,6 @@ class DocumentMetaclass(type):
 
             global _cls_index
             _cls_index[_meta['cls_key']] = new_cls
-        else:
-            for k in ['db', 'collection', 'ordering', 'indexes']:
-                del _meta[k]
 
         return new_cls
 
@@ -123,7 +128,7 @@ class BaseDocument(object):
         pass
 
     @classmethod
-    def _from_son(cls, son):
+    def from_mongo(cls, son):
         pass
 
     def __eq__(self, other):
@@ -140,7 +145,3 @@ class Document(BaseDocument):
 
     def reload(self):
         pass
-
-class EmbeddedDocument(BaseDocument):
-    __metaclass__ = DocumentMetaclass
-    _meta = {'embedded': True}

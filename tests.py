@@ -1,16 +1,18 @@
 from mongoalchemy import fields, documents, constants
 from unittest import TestCase
 
-class Settings(documents.EmbeddedDocument):
+class Settings(documents.Document):
     sound = fields.BooleanField(default=True)
 
-print Settings._meta
+    class Meta:
+        embedded = True
 
 class User(documents.Document):
     _id = fields.ObjectIdField()
     username = fields.CharField()
     friends = fields.ListField()
     guilds = fields.ListField()
+    age = fields.IntegerField()
     settings = Settings
 
     def __unicode__(self):
@@ -19,14 +21,8 @@ class User(documents.Document):
     class Meta:
         indexes = ['username', '-friends']
 
-user = User(_id=1, username='stanislav')
-print repr(user)
-
-
 class ExpressionTest(TestCase):
     def test_basic(self):
-        print User.objects
-
         # eq
         self.assertEqual(User.username == 5, {'username': 5})
         self.assertEqual(~(User.username != 5), {'username': 5})
@@ -52,9 +48,9 @@ class ExpressionTest(TestCase):
         self.assertEqual(~(User.username <= 5), {'username': {'$gte': 5}})
 
         # mod
-        self.assertEqual(User.username % 10 == 0, {'username': {'$mod': [10, 0]}})
-        self.assertEqual(User.username % 10 != 0, {'username': {'$not': {'$mod': [10, 0]}}})
-        self.assertEqual(~(User.username % 10 == 0), {'username': {'$not': {'$mod': [10, 0]}}})
+        self.assertEqual(User.age % 10 == 0, {'age': {'$mod': [10, 0]}})
+        self.assertEqual(User.age % 10 != 0, {'age': {'$not': {'$mod': [10, 0]}}})
+        self.assertEqual(~(User.age % 10 == 0), {'age': {'$not': {'$mod': [10, 0]}}})
         
         # in
         self.assertEqual(User.username.in_([2, 5]), {'username': {'$in': [2 ,5]}})
@@ -65,16 +61,16 @@ class ExpressionTest(TestCase):
         self.assertEqual(~User.username.in_([2, 5]), {'username': {'$nin': [2 ,5]}})
 
         # all
-        self.assertEqual(User.username.all([2, 5]), {'username': {'$all': [2 ,5]}})
-        self.assertEqual(~User.username.all([2, 5]), {'username': {'$not': {'$all': [2 ,5]}}})
+        self.assertEqual(User.guilds.all([2, 5]), {'guilds': {'$all': [2 ,5]}})
+        self.assertEqual(~User.guilds.all([2, 5]), {'guilds': {'$not': {'$all': [2 ,5]}}})
 
         # size
-        self.assertEqual(User.username.size(5), {'username': {'$size': 5}})
-        self.assertEqual(~User.username.size(5), {'username': {'$not': {'$size': 5}}})
+        self.assertEqual(User.guilds.size(5), {'guilds': {'$size': 5}})
+        self.assertEqual(~User.guilds.size(5), {'guilds': {'$not': {'$size': 5}}})
 
         # exists
-        self.assertEqual(User.username.exists(), {'username': {'$exists': True}})
-        self.assertEqual(~User.username.exists(), {'username': {'$exists': False}})
+        self.assertEqual(User.guilds.exists(), {'guilds': {'$exists': True}})
+        self.assertEqual(~User.guilds.exists(), {'guilds': {'$exists': False}})
 
         # type
         self.assertEqual(User.username.type(constants.ARRAY), {'username': {'$type': 4}})
@@ -85,15 +81,15 @@ class ExpressionTest(TestCase):
         self.assertEqual(~User.username.where('this.username == 5'), {'username': {'$not': {'$where': 'this.username == 5'}}})
 
         # slice
-        self.assertEqual(User.username[5], {'username': {'$slice': 5}})
-        self.assertEqual(User.username[5:-1], {'username': {'$slice': [5, -1]}})
+        self.assertEqual(User.guilds[5], {'guilds': {'$slice': 5}})
+        self.assertEqual(User.guilds[5:-1], {'guilds': {'$slice': [5, -1]}})
 
         # pop
-        self.assertEqual(User.username.pop(), {'$pop': {'username': 1}})
-        self.assertEqual(User.username.popleft(), {'$pop': {'username': -1}})
+        self.assertEqual(User.guilds.pop(), {'$pop': {'guilds': 1}})
+        self.assertEqual(User.guilds.popleft(), {'$pop': {'guilds': -1}})
 
         # addToset
-        self.assertEqual(User.username | 5, {'$addToSet': {'username': 5}})
+        self.assertEqual(User.guilds | 5, {'$addToSet': {'guilds': 5}})
 
         # set
         self.assertEqual(User.username.set(5), {'$set': {'username': 5}})
@@ -102,12 +98,12 @@ class ExpressionTest(TestCase):
         self.assertEqual(User.username.unset(), {'$unset': {'username': 1}})
 
         # inc/dec
-        self.assertEqual(User.username.inc(), {'$inc': {'username': 1}})
-        self.assertEqual(User.username.inc(5), {'$inc': {'username': 5}})
-        self.assertEqual(User.username + 5, {'$inc': {'username': 5}})
-        self.assertEqual(User.username.dec(), {'$inc': {'username': -1}})
-        self.assertEqual(User.username.dec(5), {'$inc': {'username': -5}})
-        self.assertEqual(User.username - 5, {'$inc': {'username': -5}})
+        self.assertEqual(User.age.inc(), {'$inc': {'age': 1}})
+        self.assertEqual(User.age.inc(5), {'$inc': {'age': 5}})
+        self.assertEqual(User.age + 5, {'$inc': {'age': 5}})
+        self.assertEqual(User.age.dec(), {'$inc': {'age': -1}})
+        self.assertEqual(User.age.dec(5), {'$inc': {'age': -5}})
+        self.assertEqual(User.age - 5, {'$inc': {'age': -5}})
 
         # push
         self.assertEqual(User.guilds + 5, {'$push': {'guilds': 5}})
@@ -130,8 +126,8 @@ class ExpressionTest(TestCase):
         self.assertEqual((User.guilds | 2) & User.guilds + 5, {'$push': {'guilds': 5}, '$addToSet': {'guilds': 2}})
         self.assertEqual(User.username.set('wamb') & User.username.set('stan'), {'$set': {'username': 'stan'}})
         self.assertEqual(User.guilds.unset() & User.username.set('stan'), {'$unset': {'guilds': 1}, '$set': {'username': 'stan'}})
-        self.assertEqual(User._id + 2 & User._id - 5, {'$inc': {'_id': -3}})
-        self.assertEqual(User._id + 2 & User._id.dec(2), {'$inc': {'_id': 0}})
+        self.assertEqual(User.age + 2 & User.age - 5, {'$inc': {'age': -3}})
+        self.assertEqual(User.age + 2 & User.age.dec(2), {'$inc': {'age': 0}})
 
         # realistic test
         update = User.username.set(2) & User.guilds.push(5) & User.friends.pop()
