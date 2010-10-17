@@ -1,12 +1,16 @@
 from mongoalchemy import fields, documents, constants
 from unittest import TestCase
+import datetime
+import bson
 
 class User(documents.Document):
     _id = fields.ObjectIdField()
     username = fields.StringField()
-    following = fields.ListField()
-    followers = fields.ListField()
+    email = fields.EmailField()
+    following = fields.ListField(required=False)
+    followers = fields.ListField(required=False)
     age = fields.IntegerField()
+    joined_on = fields.DateTimeField(default=datetime.datetime.now)
     
     def __unicode__(self):
         return self.username
@@ -115,12 +119,47 @@ class ExpressionTest(TestCase):
         self.assertEqual(User.followers - [1, 5], {'$pullAll': {'followers': [1, 5]}})
         self.assertEqual(User.followers.pull_all([1, 5]), {'$pullAll': {'followers': [1, 5]}})
 
-    def test_or(self):
+    def test_merging(self):
         statement = User.followers == 5
         statement |= User.followers == 9
         statement &= ((User.username != 'wamb') | (User.age == 5))
 
-        print statement
+        self.assertEquals(statement, {'$or': [{'followers': 5}, {'followers': 9}, {'username': {'$ne': 'wamb'}}, {'age': 5}]})
+
+    def test_model(self):
+        user = User(username='stanislav', email='stanislav@guildwork.com', age=22)
+        user.save()
+
+        self.assertEqual(type(user._id), bson.objectid.ObjectId)
+
+        user2 = User.objects.with_id(user._id)
+
+        self.assertEqual(user, user2)
+
+        user.username = 'wambulance'
+        user.save()
+
+        self.assertNotEqual(user.username, user2.username)
+
+        user2.reload()
+
+        self.assertEqual(user.username, user2.username)
+
+        User.objects.filter(User._id == user._id).update(User.username.set('stanislav'))
+
+        user.reload()
+
+        self.assertNotEqual(user.username, user2.username)
+
+        user2.reload()
+
+        self.assertEqual(user.username, user2.username)
+
+        self.assertEqual(User.objects.filter(User._id == user._id).count(), 1)
+
+        user.delete()
+
+        self.assertEqual(User.objects.filter(User._id == user._id).count(), 0)
 
     def test_update(self):
         self.assertEqual(User.followers + [2, 5] & User.followers + [2, 8], {'$pushAll': {'followers': [2, 5, 2, 8]}})

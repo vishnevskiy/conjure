@@ -65,6 +65,9 @@ class DocumentMetaclass(type):
             field.parent = new_cls
 
         if not _meta['embedded']:
+            if '_id' not in _fields:
+                raise exceptions.DocumentError('Missing "_id" field on "%s"' % new_cls.__name__)
+
             new_cls.objects = query.Manager()
             _meta['cls_key'] = '%s/%s:%s' % (_meta['db'], _meta['collection'], name)
 
@@ -162,11 +165,14 @@ class BaseDocument(object):
                 except (ValueError, AttributeError, AssertionError), e:
                     raise exceptions.ValidationError('Invalid value for field of type "' +
                                                      field.__class__.__name__ + '"')
-            elif field.required:
+            elif not field.name == '_id' and field.required:
                 raise exceptions.ValidationError('Field "%s" is required' % field.name)
 
     def __eq__(self, other):
-        pass
+        if isinstance(other, self.__class__):
+            return self._id == other._id
+
+        return False
 
 class Document(BaseDocument):
     __metaclass__ = DocumentMetaclass
@@ -200,4 +206,4 @@ class Document(BaseDocument):
         doc = self.__class__.objects.filter_by(_id=self._id).one()
         
         for field in self._fields:
-            setattr(self, field, doc[field])
+            setattr(self, field, doc.get(field))

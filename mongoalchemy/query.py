@@ -62,7 +62,7 @@ class QuerySet(object):
         return self
 
     def one(self):
-        return self._collection.find_one(self.compile(), fields=self._fields)
+        return self._collection.find_one(self._spec.compile(), fields=self._fields)
 
     def first(self):
         try:
@@ -74,10 +74,11 @@ class QuerySet(object):
         return list(self)
 
     def with_id(self, object_id):
-        return self.filter_by(_id=object_id).one()
+        return self._document_cls.from_mongo(self.filter_by(_id=self._document_cls._id.to_mongo(object_id)).one())
 
     def in_bulk(self, object_ids):
-        return  dict([(doc._id, doc) for doc in self.filter(self._document_cls._id.in_(object_ids))])
+        field = self._document_cls._id
+        return  dict([(doc._id, doc) for doc in self.filter(field.in_(map(field.to_mongo, object_ids)))])
 
     def next(self):
         try:

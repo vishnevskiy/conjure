@@ -3,7 +3,7 @@ import types
 import re
 import exceptions
 import datetime
-import pymongo
+import bson
 
 class Field(object):
     def __init__(self, verbose_name=None, required=True, default=None, validators=None, choices=None):
@@ -125,9 +125,9 @@ class ObjectIdField(Field):
         return value
 
     def to_mongo(self, value):
-        if not isinstance(value, pymongo.objectid.ObjectId):
+        if not isinstance(value, bson.objectid.ObjectId):
             try:
-                return pymongo.objectid.ObjectId(unicode(value))
+                return bson.objectid.ObjectId(unicode(value))
             except Exception, e:
                 raise exceptions.ValidationError(unicode(e))
 
@@ -135,8 +135,8 @@ class ObjectIdField(Field):
 
     def validate(self, value):
         try:
-            pymongo.objectid.ObjectId(unicode(value))
-        except pymongo.objectid.InvalidId:
+            bson.objectid.ObjectId(unicode(value))
+        except bson.objectid.InvalidId:
             raise exceptions.ValidationError('Invalid Object ID')
 
 class StringField(Field):

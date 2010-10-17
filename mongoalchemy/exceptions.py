@@ -1,3 +1,6 @@
+class DocumentError(Exception):
+    pass
+
 class ConnectionError(Exception):
     pass
 
