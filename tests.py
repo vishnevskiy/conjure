@@ -155,6 +155,14 @@ class ExpressionTest(TestCase):
 
         self.assertEqual(user.username, user2.username)
 
+        self.assertEqual(user.age, 22)
+
+        User.objects.filter_by(_id=user._id).update(User.age - 1)
+
+        user = User.objects.find_one(User._id == user._id)
+
+        self.assertEqual(user.age, 21)
+
         self.assertEqual(User.objects.filter(User._id == user._id).count(), 1)
 
         user.delete()

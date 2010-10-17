@@ -203,7 +203,7 @@ class Document(BaseDocument):
             raise exceptions.OperationError(unicode(err))
 
     def reload(self):
-        doc = self.__class__.objects.filter_by(_id=self._id).one()
+        doc = self.__class__.objects.filter_by(_id=self._id)._one()
         
         for field in self._fields:
             setattr(self, field, doc.get(field))
