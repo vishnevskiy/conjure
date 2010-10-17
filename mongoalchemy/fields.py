@@ -1,14 +1,22 @@
 from mongoalchemy import expressions
 import types
 
+class NOT_PROVIDED:
+    pass
+
 class Field(object):
-    def __init__(self, verbose_name=None, blank=False, default=None, validators=None, choices=None):
-        self.name = None
+    def __init__(self, verbose_name=None, name=None, blank=False, null=None, default=NOT_PROVIDED, editable=True,
+                 help_text='', validators=None, choices=None):
+        
+        self.name = name
         self.verbose_name = verbose_name
-        self.default = default
         self.blank = blank
-        self.validators = validators
-        self.choices = choices
+        self.null = null
+        self.default = default
+        self.editable = editable
+        self.help_text = help_text
+        self.validators = validators or []
+        self.choices = choices or []
 
     def __get__(self, instance, owner):
         if instance is None:
@@ -27,6 +35,18 @@ class Field(object):
     def __set__(self, instance, value):
         instance._data[self.name] = value
 
+    def has_default(self):
+       return self.default is not NOT_PROVIDED
+
+    def get_default(self):
+       if self.has_default():
+           if callable(self.default):
+               return self.default()
+
+           return self.default
+
+       return None
+
     def to_python(self, value):
         return value
 
@@ -38,59 +58,59 @@ class Field(object):
 
     # ==
     def __eq__(self, other):
-        return expressions.EqualExpression({self.name: other})
+        return expressions.EqualExpression(self.name, '', other)
 
     eq = __eq__
 
     # !=
     def __ne__(self, other):
-        return expressions.NotEqualExpression({self.name: {'$ne': other}})
+        return expressions.NotEqualExpression(self.name, 'ne', other)
 
     ne = __ne__
 
     # <
     def __lt__(self, other):
-        return expressions.LessThanExpression({self.name: {'$lt': other}})
+        return expressions.LessThanExpression(self.name, 'lt', other)
 
     lt = __lt__
 
     # <=
     def __le__(self, other):
-        return expressions.LessThanEqualExpression({self.name: {'$lte': other}})
+        return expressions.LessThanEqualExpression(self.name, 'lte', other)
 
     lte = __le__
 
     # >
     def __gt__(self, other):
-        return expressions.GreaterThanExpression({self.name: {'$gt': other}})
+        return expressions.GreaterThanExpression(self.name, 'gt', other)
 
     gt = __gt__
 
     # >=
     def __ge__(self, other):
-        return expressions.GreaterThanEqualExpression({self.name: {'$gte': other}})
+        return expressions.GreaterThanEqualExpression(self.name, 'gte', other)
 
     gte = __gt__
 
     # in
     def in_(self, vals):
-        return expressions.InExpression({self.name: {'$in': vals}})
+        return expressions.InExpression(self.name, 'in', vals)
 
     # not in
     def nin(self, vals):
-        return expressions.NotInExpression({self.name: {'$nin': vals}})
+        return expressions.NotInExpression(self.name, 'nin', vals)
     
     # exists
     def exists(self):
-        return expressions.ExistsExpression({self.name: {'$exists': True}})
+        return expressions.ExistsExpression(self.name, 'exists', True)
 
     # type
     def type(self, type_):
-        return expressions.TypeExpression({self.name: {'$type': type_}})
+        return expressions.TypeExpression(self.name, 'type', type)
 
     # where
     def where(self, javascript):
-        return expressions.WhereExpression({self.name: {'$where': javascript}})
+        return expressions.WhereExpression(self.name, 'where', javascript)
 
     # rename
     def rename(self, *args, **kwargs):
@@ -98,11 +118,11 @@ class Field(object):
 
     # set
     def set(self, val):
-        return expressions.UpdateExpression({'$set': {self.name: val}})
+        return expressions.UpdateExpression('set', self.name, val)
     
     # unset
     def unset(self):
-        return expressions.UpdateExpression({'$unset': {self.name: 1}})
+        return expressions.UpdateExpression('unset', self.name, 1)
 
 class ObjectIdField(Field):
     pass
@@ -113,12 +133,12 @@ class CharField(Field):
 class IntegerField(Field):
     # inc +
     def __add__(self, val=1):
-        return expressions.UpdateExpression({'$inc': {self.name: val}})
+        return expressions.UpdateExpression(['inc', self.name, val])
 
     inc = __add__
 
     def __sub__(self, val=1):
-        return expressions.UpdateExpression({'$inc': {self.name: -val}})
+        return expressions.UpdateExpression(['inc', self.name, -val])
 
     dec = __sub__
 
@@ -130,12 +150,12 @@ class IntegerField(Field):
                 self.a = a
 
             def __eq__(self, b):
-                return expressions.ModExpression({self.name: {'$mod': [self.a, b]}})
+                return expressions.ModExpression([self.name, 'mod', [self.a, b]])
 
             eq = __eq__
 
             def __ne__(self, b):
-                return expressions.ModExpression({self.name: {'$not': {'$mod': [self.a, b]}}})
+                return expressions.ModExpression([self.name, 'not mod', [self.a, b]])
 
             ne = __ne__
 
@@ -146,34 +166,34 @@ class IntegerField(Field):
 class ListField(Field):
     # all
     def all(self, vals):
-        return expressions.AllExpression({self.name: {'$all': vals}})
+        return expressions.AllExpression(self.name, 'all', vals)
 
     # size
     def size(self, size):
-        return expressions.SizeExpression({self.name: {'$size': size}})
+        return expressions.SizeExpression(self.name, 'size', size)
 
     # slice
     def __getitem__(self, key):
         if isinstance(key, slice):
-            return expressions.SliceExpression({self.name: {'$slice': [key.start, key.stop]}})
+            return expressions.SliceExpression(self.name, 'slice', [key.start, key.stop])
 
-        return expressions.SliceExpression({self.name: {'$slice': key}})
+        return expressions.SliceExpression(self.name, 'slice', key)
 
     slice = __getitem__
 
     # pop
     def pop(self):
-        return expressions.UpdateExpression({'$pop': {self.name: 1}})
+        return expressions.UpdateExpression('pop', self.name, 1)
 
     def popleft(self):
-        return expressions.UpdateExpression({'$pop': {self.name: -1}})
+        return expressions.UpdateExpression('pop', self.name, -1)
 
     # addToSet
     def __or__(self, val):
         return self.add_to_set(val)
 
     def add_to_set(self, val):
-        return expressions.UpdateExpression({'$addToSet': {self.name: val}})
+        return expressions.UpdateExpression('addToSet', self.name, val)
 
     # push
     def __add__(self, val=1):
@@ -185,14 +205,14 @@ class ListField(Field):
     inc = __add__
 
     def push(self, val):
-        return expressions.UpdateExpression({'$push': {self.name: val}})
+        return expressions.UpdateExpression('push', self.name, val)
 
     # pushAll
     def push_all(self, val):
         if type(val) not in [types.ListType, types.TupleType]:
             raise TypeError()
 
-        return expressions.UpdateExpression({'$pushAll': {self.name: val}})
+        return expressions.UpdateExpression('pushAll', self.name, val)
 
     # pull
     def __sub__(self, val=1):
@@ -204,14 +224,14 @@ class ListField(Field):
     dec = __sub__
 
     def pull(self, val):
-        return expressions.UpdateExpression({'$pull': {self.name: val}})
+        return expressions.UpdateExpression('pull', self.name, val)
 
     # pullAll
     def pull_all(self, val):
         if type(val) not in [types.ListType, types.TupleType]:
             raise TypeError()
 
-        return expressions.UpdateExpression({'$pullAll': {self.name: val}})
+        return expressions.UpdateExpression('pullAll', self.name, val)
 
 class BooleanField(Field):
     pass

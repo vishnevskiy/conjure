@@ -37,9 +37,17 @@ class Spec(object):
         # build a query, chains
         pass
 
-    def filter_by(self, **query):
+    def filter_by(self, **spec):
         # build a query, chains
         # allows just doing username='stanislav', email='vishnevskiy@gmail.com'
+        pass
+
+    def exclude(self, *expressions):
+        # revese of filter
+        pass
+
+    def exclude_by(self, **spec):
+        # reverse of filter by
         pass
 
     def one(self):
@@ -97,6 +105,9 @@ class Spec(object):
 
     def __getitem__(self, key):
         # will allow limit/skip/index
+        pass
+
+    def defer(self, *fields):
         pass
 
     def only(self, *fields):
