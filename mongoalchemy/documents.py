@@ -1,4 +1,4 @@
-from mongoalchemy import statements, spec, fields
+from mongoalchemy import spec, query, fields
 import copy
 
 _cls_index = {}
@@ -63,7 +63,7 @@ class DocumentMetaclass(type):
             field.parent = new_cls
 
         if not _meta['embedded']:
-            new_cls.objects = spec.Manager()
+            new_cls.objects = query.Manager()
             _meta['cls_key'] = '%s/%s:%s' % (_meta['db'], _meta['collection'], name)
 
             global _cls_index
