@@ -30,7 +30,7 @@ class ExpressionTest(TestCase):
         # ne
         self.assertEqual(User.username != 5, {'username': {'$ne': 5}})
         self.assertEqual(~(User.username == 5), {'username': {'$ne': 5}})
-
+        
         # lt
         self.assertEqual(User.username < 5, {'username': {'$lt': 5}})
         self.assertEqual(~(User.username > 5), {'username': {'$lt': 5}})
@@ -41,6 +41,7 @@ class ExpressionTest(TestCase):
 
         # gt
         self.assertEqual(User.username > 5, {'username': {'$gt': 5}})
+        self.assertEqual((User.username > 5) & (User.username < 10), {'username': {'$gt': 5, '$lt': 10}})
         self.assertEqual(~(User.username < 5), {'username': {'$gt': 5}})
 
         # gte
@@ -121,16 +122,16 @@ class ExpressionTest(TestCase):
         self.assertEqual(User.guilds - [1, 5], {'$pullAll': {'guilds': [1, 5]}})
         self.assertEqual(User.guilds.pull_all([1, 5]), {'$pullAll': {'guilds': [1, 5]}})
 
-#    def test_update(self):
-#        self.assertEqual(User.guilds + [2, 5] & User.guilds + [2, 8], {'$pushAll': {'guilds': [2, 5, 2, 8]}})
-#        self.assertEqual((User.guilds | 2) & User.guilds + 5, {'$push': {'guilds': 5}, '$addToSet': {'guilds': 2}})
-#        self.assertEqual(User.username.set('wamb') & User.username.set('stan'), {'$set': {'username': 'stan'}})
-#        self.assertEqual(User.guilds.unset() & User.username.set('stan'), {'$unset': {'guilds': 1}, '$set': {'username': 'stan'}})
-#        self.assertEqual(User.age + 2 & User.age - 5, {'$inc': {'age': -3}})
-#        self.assertEqual(User.age + 2 & User.age.dec(2), {'$inc': {'age': 0}})
-#
-#        # realistic test
-#        update = User.username.set(2) & User.guilds.push(5) & User.friends.pop()
-#        update &= User.friends.push(10)
-#
-#        self.assertEqual(update, {'$set': {'username': 2}, '$push': {'friends': 10, 'guilds': 5}, '$pop': {'friends': 1}})
+    def test_update(self):
+        self.assertEqual(User.guilds + [2, 5] & User.guilds + [2, 8], {'$pushAll': {'guilds': [2, 5, 2, 8]}})
+        self.assertEqual((User.guilds | 2) & User.guilds + 5, {'$push': {'guilds': 5}, '$addToSet': {'guilds': 2}})
+        self.assertEqual(User.username.set('wamb') & User.username.set('stan'), {'$set': {'username': 'stan'}})
+        self.assertEqual(User.guilds.unset() & User.username.set('stan'), {'$unset': {'guilds': 1}, '$set': {'username': 'stan'}})
+        self.assertEqual(User.age + 2 & User.age - 5, {'$inc': {'age': -3}})
+        self.assertEqual(User.age + 2 & User.age.dec(2), {'$inc': {'age': 0}})
+
+        # realistic test
+        update = User.username.set(2) & User.guilds.push(5) & User.friends.pop()
+        update &= User.friends.push(10)
+
+        self.assertEqual(update, {'$set': {'username': 2}, '$push': {'friends': 10, 'guilds': 5}, '$pop': {'friends': 1}})
