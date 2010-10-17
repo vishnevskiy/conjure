@@ -3,13 +3,20 @@ from unittest import TestCase
 import datetime
 import bson
 
+class Settings(documents.Document):
+    sound = fields.BooleanField(default=True)
+
+    class Meta:
+        embedded = True
+
 class User(documents.Document):
     _id = fields.ObjectIdField()
     username = fields.StringField()
     email = fields.EmailField()
-    following = fields.ListField(required=False)
-    followers = fields.ListField(required=False)
+    following = fields.ListField(fields.ObjectIdField())
+    followers = fields.ListField(fields.ObjectIdField())
     age = fields.IntegerField()
+    settings = fields.EmbeddedDocumentField(Settings)
     joined_on = fields.DateTimeField(default=datetime.datetime.now)
     
     def __unicode__(self):
@@ -128,6 +135,8 @@ class ExpressionTest(TestCase):
 
     def test_model(self):
         user = User(username='stanislav', email='stanislav@guildwork.com', age=22)
+        user.followers.append(bson.objectid.ObjectId())
+        user.settings = Settings()
         user.save()
 
         self.assertEqual(type(user._id), bson.objectid.ObjectId)
@@ -160,6 +169,8 @@ class ExpressionTest(TestCase):
         User.objects.filter_by(_id=user._id).update(User.age - 1)
 
         user = User.objects.find_one(User._id == user._id)
+
+        self.assertEqual(user.settings.sound, True)
 
         self.assertEqual(user.age, 21)
 

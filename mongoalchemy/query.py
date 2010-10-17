@@ -151,18 +151,19 @@ class QuerySet(object):
 
     def _update(self, update, safe, upsert, multi):
        try:
+           print update, safe, upsert, multi
            self._collection.update(self._spec.compile(), update, safe=safe, upsert=upsert, multi=multi)
        except pymongo.errors.OperationFailure, err:
            raise exceptions.OperationError(unicode(err))
 
     def update(self, update_spec, safe=False):
-        self._update(update_spec.compile(), safe, upsert=False, multi=True)
+        self._update(update_spec.compile(), safe, False, True)
 
     def update_one(self, update_spec, safe=False):
-        self._update(update_spec.compile(), safe, upsert=False, multi=False)
+        self._update(update_spec.compile(), safe, False, False)
 
     def upsert(self, update_spec, safe=False):
-        self._update(update_spec.compile(), safe, upsert=True, multi=False)
+        self._update(update_spec.compile(), safe, True, False)
 
     def __iter__(self):
         return self

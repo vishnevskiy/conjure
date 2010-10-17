@@ -43,6 +43,9 @@ class DocumentMetaclass(type):
             if hasattr(base, '_meta'):
                 _meta.update(copy.deepcopy(base._meta))
 
+                if 'parent_field' in _meta:
+                    del _meta['parent_field']
+
         Meta = attrs.pop('Meta', None)
 
         if Meta:
@@ -62,7 +65,7 @@ class DocumentMetaclass(type):
         new_cls = super_new(cls, name, bases, attrs)
 
         for field in new_cls._fields.values():
-            field.parent = new_cls
+            field.owner = new_cls
 
         if not _meta['embedded']:
             if '_id' not in _fields:
@@ -150,6 +153,10 @@ class BaseDocument(object):
                 pass # TODO: implement
 
             del doc['_cls']
+
+        for name, field in cls._fields.iteritems():
+            if name in doc:
+                doc[name] = field.to_python(doc[name])
 
         doc = cls(**doc)
 

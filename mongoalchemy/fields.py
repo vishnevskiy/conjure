@@ -14,6 +14,19 @@ class Field(object):
         self.validators = validators or []
         self.choices = choices or []
 
+    def get_key(self, positional=False):
+        if isinstance(self.owner, Field):
+            return self.owner.get_key(positional)
+        elif  'parent_field' in self.owner._meta:
+            if positional:
+                sep = '.$.'
+            else:
+                sep = '.'
+
+            return self.owner._meta['parent_field'].get_key(positional) + sep + self.name
+
+        return self.name
+
     def __get__(self, instance, owner):
         if instance is None:
             return self
@@ -63,62 +76,62 @@ class Field(object):
         return self.eq(other)
 
     def eq(self, other):
-        return spec.Equal([self.name, '', other])
+        return spec.Equal([self.get_key(), '', other])
 
     def __ne__(self, other):
         return self.ne(other)
 
     def ne(self, other):
-        return spec.NotEqual([self.name, 'ne', other])
+        return spec.NotEqual([self.get_key(), 'ne', other])
 
     def __lt__(self, other):
         return self.lt(other)
 
     def lt(self, other):
-        return spec.LessThan([self.name, 'lt', other])
+        return spec.LessThan([self.get_key(), 'lt', other])
 
     def __le__(self, other):
         return self.lte(other)
 
     def lte(self, other):
-        return spec.LessThanEqual([self.name, 'lte', other])
+        return spec.LessThanEqual([self.get_key(), 'lte', other])
 
     def __gt__(self, other):
         return self.gt(other)
 
     def gt(self, other):
-        return spec.GreaterThan([self.name, 'gt', other])
+        return spec.GreaterThan([self.get_key(), 'gt', other])
 
     def __ge__(self, other):
         return self.gte(other)
 
     def gte(self, other):
-        return spec.GreaterThanEqual([self.name, 'gte', other])
+        return spec.GreaterThanEqual([self.get_key(), 'gte', other])
 
     def in_(self, vals):
-        return spec.In([self.name, 'in', vals])
+        return spec.In([self.get_key(), 'in', vals])
 
     def nin(self, vals):
-        return spec.NotIn([self.name, 'nin', vals])
+        return spec.NotIn([self.get_key(), 'nin', vals])
 
     def exists(self):
-        return spec.Exists([self.name, 'exists', True])
+        return spec.Exists([self.get_key(), 'exists', True])
 
     def type(self, type_):
-        return spec.Type([self.name, 'type', type_])
+        return spec.Type([self.get_key(), 'type', type_])
 
     def where(self, javascript):
-        return spec.Where([self.name, 'where', javascript])
+        return spec.Where([self.get_key(), 'where', javascript])
 
     def rename(self, *args, **kwargs):
         raise NotImplementedError()
 
     def set(self, val):
         self._validate(val)
-        return spec.UpdateSpecification(['set', self.name, val])
+        return spec.UpdateSpecification(['set', self.get_key(True), val])
 
     def unset(self):
-        return spec.UpdateSpecification(['unset', self.name, 1])
+        return spec.UpdateSpecification(['unset', self.get_key(True), 1])
 
 class ObjectIdField(Field):
     def to_python(self, value):
@@ -198,14 +211,14 @@ class IntegerField(Field):
 
     def inc(self, val=1):
         self._validate(val)
-        return spec.UpdateSpecification(['inc', self.name, val])
+        return spec.UpdateSpecification(['inc', self.get_key(True), val])
 
     def __sub__(self, val):
         return self.dec(val)
 
     def dec(self, val=1):
         self._validate(val)
-        return spec.UpdateSpecification(['inc', self.name, -val])
+        return spec.UpdateSpecification(['inc', self.get_key(True), -val])
 
     def __mod__(self, other):
         class Mod(object):
@@ -265,32 +278,55 @@ class DictField(Field):
                                              'contain "." or "$" characters')
 
 class ListField(Field):
+    def __init__(self, field, default=None, **kwargs):
+        if not isinstance(field, Field):
+            raise exceptions.ValidationError('Argument to ListField constructor must be a valid field')
+
+        field.owner = self
+        self.field = field
+        Field.__init__(self, default=default or [], **kwargs)
+
+    def to_python(self, value):
+        return [self.field.to_python(item) for item in value]
+
+    def to_mongo(self, value):
+        return [self.field.to_mongo(item) for item in value]
+
+    def validate(self, value):
+        if not isinstance(value, (list, tuple)):
+            raise exceptions.ValidationError('Only lists and tuples may be used in a list field')
+
+        try:
+            [self.field.validate(item) for item in value]
+        except Exception, err:
+            raise exceptions.ValidationError('Invalid ListField item (%s)' % str(err))
+
     def all(self, vals):
-        return spec.All([self.name, 'all', vals])
+        return spec.All([self.get_key(), 'all', vals])
 
     def size(self, size):
-        return spec.Size([self.name, 'size', size])
+        return spec.Size([self.get_key(), 'size', size])
 
     def pop(self):
-        return spec.UpdateSpecification(['pop', self.name, 1])
+        return spec.UpdateSpecification(['pop', self.get_key(True), 1])
 
     def popleft(self):
-        return spec.UpdateSpecification(['pop', self.name, -1])
+        return spec.UpdateSpecification(['pop', self.get_key(True), -1])
 
     def __getitem__(self, key):
         return self.slice(key)
 
     def slice(self, key):
         if isinstance(key, slice):
-            return spec.Slice([self.name, 'slice', [key.start, key.stop]])
+            return spec.Slice([self.get_key(), 'slice', [key.start, key.stop]])
 
-        return spec.Slice([self.name, 'slice', key])
+        return spec.Slice([self.get_key(), 'slice', key])
 
     def __or__(self, val):
         return self.add_to_set(val)
 
     def add_to_set(self, val):
-        return spec.UpdateSpecification(['addToSet', self.name, val])
+        return spec.UpdateSpecification(['addToSet', self.get_key(True), val])
 
     def __add__(self, val):
         if type(val) in [types.ListType, types.TupleType]:
@@ -299,13 +335,13 @@ class ListField(Field):
             return self.push(val)
 
     def push(self, val):
-        return spec.UpdateSpecification(['push', self.name, val])
+        return spec.UpdateSpecification(['push', self.get_key(True), val])
 
     def push_all(self, val):
         if type(val) not in [types.ListType, types.TupleType]:
             raise TypeError()
 
-        return spec.UpdateSpecification(['pushAll', self.name, val])
+        return spec.UpdateSpecification(['pushAll', self.get_key(True), val])
 
     def __sub__(self, val):
         if type(val) in [types.ListType, types.TupleType]:
@@ -314,10 +350,39 @@ class ListField(Field):
             return self.pull(val)
 
     def pull(self, val):
-        return spec.UpdateSpecification(['pull', self.name, val])
+        return spec.UpdateSpecification(['pull', self.get_key(True), val])
 
     def pull_all(self, val):
         if type(val) not in [types.ListType, types.TupleType]:
             raise TypeError()
 
-        return spec.UpdateSpecification(['pullAll', self.name, val])
+        return spec.UpdateSpecification(['pullAll', self.get_key(True), val])
+
+class EmbeddedDocumentField(Field):
+    def __init__(self, document, **kwargs):
+#        if not issubclass(document, EmbeddedDocument):
+#            raise exceptions.ValidationError('Invalid embedded document class provided '
+#                                  'to an EmbeddedDocumentField')
+
+        if 'parent_field' in document._meta:
+            raise exceptions.ValidationError('This document is already embedded')
+
+        document._meta['parent_field'] = self
+        self.document = document
+
+        Field.__init__(self, **kwargs)
+
+    def to_python(self, value):
+        if not isinstance(value, self.document):
+            return self.document.from_mongo(value)
+
+        return value
+
+    def to_mongo(self, value):
+        return self.document.to_mongo(value)
+
+    def validate(self, value):
+        if not isinstance(value, self.document):
+            raise exceptions.ValidationError('Invalid embedded document instance provided to an EmbeddedDocumentField')
+
+        self.document.validate(value)
