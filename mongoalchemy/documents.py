@@ -1,4 +1,4 @@
-from mongoalchemy import spec, query, fields
+from mongoalchemy import query, fields
 import copy
 import exceptions
 import pymongo

@@ -1,5 +1,4 @@
 from mongoalchemy.connection import connect
-from mongoalchemy.utils import transform_keys
 import spec
 import exceptions
 import pymongo
@@ -25,9 +24,24 @@ class QuerySet(object):
         self._spec = spec.QuerySpecification(None)
         self._pymongo_cursor = None
         self._fields = None
-        
+
+    def _transform_key_list(keys):
+        transformed_keys = []
+
+        for key in keys.split():
+           direction = pymongo.ASCENDING
+
+           if key[0] == '-':
+               direction = pymongo.DESCENDING
+           if key[0] in ('-', '+'):
+               key = key[1:]
+
+           transformed_keys.append((key, direction))
+
+        return transformed_keys
+
     def ensure_index(self, key_or_list):
-        indexes = transform_keys(key_or_list)
+        indexes = self._transform_key_list(key_or_list)
         self._collection.ensure_index(indexes)
         return self
 
@@ -132,9 +146,8 @@ class QuerySet(object):
                 
         return self
 
-    def sort(self, keys):
-        keys = transform_keys(keys)
-        self._cursor.sort(keys)
+    def sort(self, key_list):
+        self._cursor.sort(self._transform_key_list(key_list))
         return self
 
     def explain(self, pretty=False):

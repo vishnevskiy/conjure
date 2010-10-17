@@ -360,9 +360,8 @@ class ListField(Field):
 
 class EmbeddedDocumentField(Field):
     def __init__(self, document, **kwargs):
-#        if not issubclass(document, EmbeddedDocument):
-#            raise exceptions.ValidationError('Invalid embedded document class provided '
-#                                  'to an EmbeddedDocumentField')
+        if not (hasattr(document, '_meta') and document._meta['embedded']):
+            raise exceptions.ValidationError('Invalid embedded document class provided to an EmbeddedDocumentField')
 
         if 'parent_field' in document._meta:
             raise exceptions.ValidationError('This document is already embedded')
