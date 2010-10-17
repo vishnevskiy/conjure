@@ -122,6 +122,13 @@ class ExpressionTest(TestCase):
         self.assertEqual(User.guilds - [1, 5], {'$pullAll': {'guilds': [1, 5]}})
         self.assertEqual(User.guilds.pull_all([1, 5]), {'$pullAll': {'guilds': [1, 5]}})
 
+    def test_or(self):
+        statement = User.guilds == 5
+        statement |= User.guilds == 9
+        statement &= ((User.username != 'wamb') | (User.age == 5))
+
+        print statement
+
     def test_update(self):
         self.assertEqual(User.guilds + [2, 5] & User.guilds + [2, 8], {'$pushAll': {'guilds': [2, 5, 2, 8]}})
         self.assertEqual((User.guilds | 2) & User.guilds + 5, {'$push': {'guilds': 5}, '$addToSet': {'guilds': 2}})

@@ -6,19 +6,22 @@ class Statement(object):
     def __init__(self, expressions):
         if type(expressions) == types.ListType:
             self.expressions = {}
-            self.add(*expressions)
+            self._set_expression(*expressions)
         else:
             self.expressions = expressions
-
-    def add(self, k, ops, v):
-        raise NotImplemented()
 
     def to_dict(self):
         raise NotImplemented()
 
+    def clone(self):
+        return copy.deepcopy(self)
+
+    def _set_expression(self, k, ops, v):
+        raise NotImplemented()
+
     def __eq__(self, other):
         if type(other) == dict:
-            return self.to_dict() == other
+            return self.compile() == other
 
         return self == other
 
@@ -29,7 +32,7 @@ class Statement(object):
         return self.expressions.__iter__()
 
     def __repr__(self):
-        return self.to_dict().__repr__()
+        return self.compile().__repr__()
 
     def __getitem__(self, k):
         return self.expressions.__getitem__(k)
@@ -40,14 +43,8 @@ class Statement(object):
     def __delitem__(self, k):
         return self.expressions.__delitem__(k)
 
-    def clone(self):
-        return copy.deepcopy(self)
-
 class UpdateStatement(Statement):
-    def add(self, op, k, v):
-        self.expressions[op + ':' + k] = v
-
-    def to_dict(self):
+    def compile(self):
         d = collections.defaultdict(dict)
 
         for key in self:
@@ -55,8 +52,10 @@ class UpdateStatement(Statement):
             d['$' + op][k] = self[key]
 
         return dict(d)
-    
-    # &
+
+    def _set_expression(self, op, k, v):
+        self.expressions[op + ':' + k] = v
+
     def __and__(self, other):
         stmt = self.clone()
 
@@ -74,10 +73,7 @@ class UpdateStatement(Statement):
         return UpdateStatement(stmt)
 
 class SpecStatement(Statement):
-    def add(self, k, ops, v):
-        self.expressions[k + ':' + ':'.join(ops.split())] = v
-
-    def to_dict(self):
+    def compile(self):
         d = {}
 
         for expr in self:
@@ -98,6 +94,9 @@ class SpecStatement(Statement):
 
         return d
 
+    def _set_expression(self, k, ops, v):
+        self.expressions[k + ':' + ':'.join(ops.split())] = v
+
     def _parse_expression(self, expr):
         if expr.startswith(':'):
             key, ops = '', expr[1:]
@@ -115,13 +114,41 @@ class SpecStatement(Statement):
 
         return key, ops
 
-    # |
+    def _invert_op(self, op):
+        stmt = self.clone()
+
+        for expr in self:
+            key, ops = self._parse_expression(expr)
+
+            if op not in ops:
+                ops.insert(0, op)
+            else:
+                ops.remove(op)
+
+            stmt[key + ':' + ':'.join(ops)] = stmt[expr]
+
+            del stmt[expr]
+
+        return stmt.expressions
+
+    def _swap_op(self, old_op, new_op):
+        stmt = self.clone()
+
+        for expr in self:
+            key, ops = self._parse_expression(expr)
+
+            ops[ops.index(old_op)] = new_op
+
+            stmt[key + ':' + ':'.join(ops)] = stmt[expr]
+            del stmt[expr]
+
+        return stmt.expressions
+
     def __or__(self, other):
         return SpecStatement(['', 'or', [self.clone(), other.clone()]])
 
     __ior__ = __or__
 
-    # &
     def __and__(self, other):
         stmt = self.clone()
 
@@ -136,74 +163,43 @@ class SpecStatement(Statement):
 
     __iand__ = __and__
 
-    # ~
     def __invert__(self):
-        return SpecStatement(self._invert('not'))
-
-    def _invert(self, op):
-        stmt = self.clone()
-
-        for expr in self:
-            key, ops = self._parse_expression(expr)
-
-            if op not in ops:
-                ops.insert(0, op)
-            else:
-                ops.remove(op)
-                
-            stmt[key + ':' + ':'.join(ops)] = stmt[expr]
-
-            del stmt[expr]
-
-        return stmt.expressions
-
-    def _swap(self, old_op, new_op):
-        stmt = self.clone()
-
-        for expr in self:
-            key, ops = self._parse_expression(expr)
-
-            ops[ops.index(old_op)] = new_op
-
-            stmt[key + ':' + ':'.join(ops)] = stmt[expr]
-            del stmt[expr]
-
-        return stmt.expressions
+        return SpecStatement(self._invert_op('not'))
 
 class Equal(SpecStatement):
     def __invert__(self):
-        return NotEqual(self._invert('ne'))
+        return NotEqual(self._invert_op('ne'))
 
 class NotEqual(SpecStatement):
     def __invert__(self):
-        return LessThan(self._invert('ne'))
+        return LessThan(self._invert_op('ne'))
 
 class LessThan(SpecStatement):
     def __invert__(self):
-        return GreaterThanEqual(self._swap('lt', 'gt'))
+        return GreaterThanEqual(self._swap_op('lt', 'gt'))
 
 class GreaterThan(SpecStatement):
     def __invert__(self):
-        return GreaterThanEqual(self._swap('gt', 'lt'))
+        return GreaterThanEqual(self._swap_op('gt', 'lt'))
 
 class LessThanEqual(SpecStatement):
     def __invert__(self):
-        return GreaterThanEqual(self._swap('lte', 'gte'))
+        return GreaterThanEqual(self._swap_op('lte', 'gte'))
 
 class GreaterThanEqual(SpecStatement):
     def __invert__(self):
-        return LessThanEqual(self._swap('gte', 'lte'))
+        return LessThanEqual(self._swap_op('gte', 'lte'))
 
 class Mod(SpecStatement):
     pass
 
 class In(SpecStatement):
     def __invert__(self):
-        return NotIn(self._swap('in', 'nin'))
+        return NotIn(self._swap_op('in', 'nin'))
 
 class NotIn(SpecStatement):
     def __invert__(self):
-        return In(self._swap('nin', 'in'))
+        return In(self._swap_op('nin', 'in'))
 
 class All(SpecStatement):
     pass
