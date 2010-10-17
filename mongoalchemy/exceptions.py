@@ -3,3 +3,9 @@ class ConnectionError(Exception):
 
 class ValidationError(Exception):
     pass
+
+class OperationError(Exception):
+    pass
+
+class DoesNotExist(Exception):
+    pass

@@ -1,5 +1,7 @@
 from mongoalchemy import spec, query, fields
 import copy
+import exceptions
+import pymongo
 
 _cls_index = {}
 
@@ -15,7 +17,7 @@ class DocumentMetaclass(type):
 
         Meta = attrs.pop('Meta', None)
 
-        if Meta and getattr(Meta, 'embedded', True):
+        if Meta and getattr(Meta, 'embedded', False):
             _meta = {
                 'embedded': True
             }
@@ -125,11 +127,30 @@ class BaseDocument(object):
             return '%s object' % self.__class__.__name__
 
     def to_mongo(self):
-        pass
+        doc = {}
+
+        for field_name, field in self._fields.iteritems():
+            value = getattr(self, field_name, None)
+
+            if value is not None:
+                doc[field.name] = field.to_mongo(value)
+
+        if not self._meta['embedded']:
+            doc['_cls'] = self.__class__.__name__
+
+        return doc
 
     @classmethod
-    def from_mongo(cls, son):
-        pass
+    def from_mongo(cls, doc):
+        if '_cls' in doc:
+            if doc['_cls'] != cls.__name__:
+                pass # TODO: implement
+
+            del doc['_cls']
+
+        doc = cls(**doc)
+
+        return doc
 
     def __eq__(self, other):
         pass
@@ -137,11 +158,31 @@ class BaseDocument(object):
 class Document(BaseDocument):
     __metaclass__ = DocumentMetaclass
 
-    def save(self, safe=True, force_insert=False):
-        pass
+    def save(self, safe=True, insert=False):
+        doc = self.to_mongo()
+
+        try:
+            collection = self.__class__.objects._collection
+   
+            if insert:
+                object_id = collection.insert(doc, safe=safe)
+            else:
+                object_id = collection.save(doc, safe=safe)
+        except pymongo.errors.OperationFailure, err:
+            raise exceptions.OperationError(unicode(err))
+
+        self['_id'] = object_id
 
     def delete(self, safe=False):
-        pass
+        object_id = self._fields['_id'].to_mongo(self._id)
+
+        try:
+            self.__class__.objects.filter_by(_id=object_id).delete(safe=safe)
+        except pymongo.errors.OperationFailure, err:
+            raise exceptions.OperationError(unicode(err))
 
     def reload(self):
-        pass
+        doc = self.__class__.objects.filter_by(_id=self._id).one()
+        
+        for field in self._fields:
+            setattr(self, field, doc[field])

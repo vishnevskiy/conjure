@@ -7,8 +7,10 @@ class Specification(object):
         if type(expressions) == types.ListType:
             self.expressions = {}
             self._set_expression(*expressions)
-        else:
+        elif expressions is not None:
             self.expressions = expressions
+        else:
+            self.expressions = {}
 
     def to_dict(self):
         raise NotImplemented()
@@ -79,6 +81,10 @@ class QuerySpecification(Specification):
         for expr in self:
             key, ops = self._parse_expression(expr)
             val = self[expr]
+
+            if not key:
+                key = '$' + ops[0]
+                ops = ops[1:]
 
             current = d[key] = d.get(key, {})
             last_key = key

@@ -1,11 +1,8 @@
 from mongoalchemy import spec
 import types
 
-class NOT_PROVIDED:
-    pass
-
 class Field(object):
-    def __init__(self, verbose_name=None, name=None, blank=False, null=None, default=NOT_PROVIDED, editable=True,
+    def __init__(self, verbose_name=None, name=None, blank=False, null=None, default=None, editable=True,
                  help_text='', validators=None, choices=None):
         
         self.name = name
@@ -36,7 +33,7 @@ class Field(object):
         instance._data[self.name] = value
 
     def has_default(self):
-       return self.default is not NOT_PROVIDED
+       return self.default is not None
 
     def get_default(self):
        if self.has_default():
@@ -119,7 +116,7 @@ class Field(object):
 class ObjectIdField(Field):
     pass
 
-class CharField(Field):
+class StringField(Field):
     pass
 
 class IntegerField(Field):

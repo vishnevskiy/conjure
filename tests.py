@@ -9,7 +9,7 @@ class Settings(documents.Document):
 
 class User(documents.Document):
     _id = fields.ObjectIdField()
-    username = fields.CharField()
+    username = fields.StringField()
     friends = fields.ListField()
     guilds = fields.ListField()
     age = fields.IntegerField()

@@ -1,6 +1,8 @@
-import types
 from mongoalchemy.connection import connect
 from mongoalchemy.utils import transform_keys
+import spec
+import exceptions
+import pymongo
 
 class Manager(object):
     def __init__(self):
@@ -20,103 +22,114 @@ class QuerySet(object):
     def __init__(self, document_cls, collection):
         self._document_cls = document_cls
         self._collection = collection
-        self._spec = {}
-
+        self._spec = spec.QuerySpecification(None)
+        self._pymongo_cursor = None
+        self._fields = None
+        
     def ensure_index(self, key_or_list):
-        pass
+        indexes = transform_keys(key_or_list)
+        self._collection.ensure_index(indexes)
+        return self
 
     def find(self, *expressions):
-        # same as filter(User.username == 'Stanislav').all()
-        pass
+        return self.filter(*expressions).all()
 
     def find_one(self, *expressions):
-        # same as filter(User.username == 'Stanislav').one()
-        pass
+        return self.filter(*expressions).one()
 
     def filter(self, *expressions):
-        # build a query, chains
-        pass
+        for expression in expressions:
+            self._spec &= expression
 
-    def filter_by(self, **spec):
-        # build a query, chains
-        # allows just doing username='stanislav', email='vishnevskiy@gmail.com'
-        pass
+        return self
+
+    def filter_by(self, **kwargs):
+        for k,v  in kwargs.iteritems():
+            self._spec &= getattr(self._document_cls, k).eq(v)
+
+        return self
 
     def exclude(self, *expressions):
-        # revese of filter
-        pass
+        for expression in expressions:
+            self._spec &= ~expression
 
-    def exclude_by(self, **spec):
-        # reverse of filter by
-        pass
+        return self
+
+    def exclude_by(self, **kwargs):
+        for k,v  in kwargs.iteritems():
+            self._spec &= ~getattr(self._document_cls, k).eq(v)
+
+        return self
 
     def one(self):
-        # calls find_one
-        pass
+        return self._collection.find_one(self.compile(), fields=self._fields)
 
     def first(self):
-        # similar to one, but will throw DoesNotExist
-        pass
+        try:
+            return self[0]
+        except IndexError:
+            raise exceptions.DoesNotExist()
 
     def all(self):
-        # casts self to list
-        pass
+        return list(self)
 
-    def with_id(self):
-        # identical to Test.objects.filter_by(_id=5).one()
-        pass
+    def with_id(self, object_id):
+        return self.filter_by(_id=object_id).one()
 
     def in_bulk(self, object_ids):
-        # queries by list of object ids and returns a map
-        return  dict([(doc._id, doc) for doc in self._collection.find({'_id': {'$in': object_ids}})])
+        return  dict([(doc._id, doc) for doc in self.filter(self._document_cls._id.in_(object_ids))])
 
     def next(self):
-        # get next from cursor
         try:
-            if self._limit == 0:
-                raise StopIteration
-            #return self._document._from_son(self._cursor.next())
+            return self._document_cls.from_mongo(self._cursor.next())
         except StopIteration, e:
             self.rewind()
             raise e
     
     def rewind(self):
-        # rewind the cursor
         self._cursor.rewind()
         return self
 
     def count(self):
-        # number of objects returned by query
         return self._cursor.count(with_limit_and_skip=True)
 
     def __len__(self):
         return self.count()
 
     def limit(self, n):
-        n = n or 1
         self._cursor.limit(n)
-        self._limit = n
         return self
 
     def skip(self, n):
         self._cursor.skip(n)
-        self._skip = n
         return self
 
     def __getitem__(self, key):
-        # will allow limit/skip/index
-        pass
-
-    def defer(self, *fields):
-        pass
+        if isinstance(key, slice):
+            self._pymongo_cursor = self._cursor[key]
+            return self
+        elif isinstance(key, int):
+            return self._document_cls.from_mongo(self._cursor[key])
 
     def only(self, *fields):
-        # list of fields to bring from db, defaults to all
-        pass
+        self._fields = ['_cls']
+
+        for field in fields:
+            if isinstance(field, basestring):
+                self._fields.append({
+                    field: 1
+                })
+            elif isinstance(field, fields.Field):
+                self._fields.append({
+                    field.name: 1
+                })
+            elif isinstance(field, spec.Slice):
+                self._fields.append(field.compile())
+                
+        return self
 
     def sort(self, keys):
         keys = transform_keys(keys)
-        self._ordering = keys
         self._cursor.sort(keys)
         return self
 
@@ -130,25 +143,32 @@ class QuerySet(object):
         return plan
 
     def delete(self, safe=False):
-        return self._collection.remove(self._spec, safe=safe)
+        return self._collection.remove(self._spec.compile(), safe=safe)
 
-    def update(self):
-        # uses multi=True
-        pass
+    def _update(self, update, safe, upsert, multi):
+       try:
+           self._collection.update(self._spec.compile(), update, safe=safe, upsert=upsert, multi=multi)
+       except pymongo.errors.OperationFailure, err:
+           raise exceptions.OperationError(unicode(err))
 
-    def update_one(self):
-        pass
+    def update(self, update_spec, safe=False):
+        self._update(update_spec.compile(), safe, upsert=False, multi=True)
 
-    def upsert(self):
-        # users upsert=True
-        pass
+    def update_one(self, update_spec, safe=False):
+        self._update(update_spec.compile(), safe, upsert=False, multi=False)
+
+    def upsert(self, update_spec, safe=False):
+        self._update(update_spec.compile(), safe, upsert=True, multi=False)
 
     def __iter__(self):
-        pass
+        return self
 
-    def slave_ok(self):
-        # allow querying avaliable slaves for this query
-        pass
+    @property
+    def _cursor(self):
+        if self._pymongo_cursor is None:
+            self._pymongo_cursor = self._collection.find(self._spec.compile(), fields=self._fields)
+
+        return self._pymongo_cursor
 
     def __repr__(self):
         return self._spec.__repr__()
