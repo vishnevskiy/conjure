@@ -152,6 +152,19 @@ class BaseDocument(object):
 
         return doc
 
+    def validate(self):
+        fields = [(field, getattr(self, name)) for name, field in self._fields.iteritems()]
+
+        for field, value in fields:
+            if value is not None:
+                try:
+                    field._validate(value)
+                except (ValueError, AttributeError, AssertionError), e:
+                    raise exceptions.ValidationError('Invalid value for field of type "' +
+                                                     field.__class__.__name__ + '"')
+            elif field.required:
+                raise exceptions.ValidationError('Field "%s" is required' % field.name)
+
     def __eq__(self, other):
         pass
 
@@ -159,6 +172,8 @@ class Document(BaseDocument):
     __metaclass__ = DocumentMetaclass
 
     def save(self, safe=True, insert=False):
+        self.validate()
+
         doc = self.to_mongo()
 
         try:

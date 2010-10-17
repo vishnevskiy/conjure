@@ -1,31 +1,24 @@
 from mongoalchemy import fields, documents, constants
 from unittest import TestCase
 
-class Settings(documents.Document):
-    sound = fields.BooleanField(default=True)
-
-    class Meta:
-        embedded = True
-
 class User(documents.Document):
     _id = fields.ObjectIdField()
     username = fields.StringField()
-    friends = fields.ListField()
-    guilds = fields.ListField()
+    following = fields.ListField()
+    followers = fields.ListField()
     age = fields.IntegerField()
-    settings = Settings
-
+    
     def __unicode__(self):
         return self.username
 
     class Meta:
-        indexes = ['username', '-friends']
+        indexes = ['username', '-followers']
 
 class ExpressionTest(TestCase):
     def test_basic(self):
         # eq
-        self.assertEqual(User.username == 5, {'username': 5})
-        self.assertEqual(~(User.username != 5), {'username': 5})
+        self.assertEqual(User.username == 'stanislav', {'username': 'stanislav'})
+        self.assertEqual(~(User.username != 'stanislav'), {'username': 'stanislav'})
 
         # ne
         self.assertEqual(User.username != 5, {'username': {'$ne': 5}})
@@ -54,46 +47,46 @@ class ExpressionTest(TestCase):
         self.assertEqual(~(User.age % 10 == 0), {'age': {'$not': {'$mod': [10, 0]}}})
         
         # in
-        self.assertEqual(User.username.in_([2, 5]), {'username': {'$in': [2 ,5]}})
-        self.assertEqual(~User.username.nin([2, 5]), {'username': {'$in': [2 ,5]}})
+        self.assertEqual(User.followers.in_([2, 5]), {'followers': {'$in': [2 ,5]}})
+        self.assertEqual(~User.followers.nin([2, 5]), {'followers': {'$in': [2 ,5]}})
 
         # nin
-        self.assertEqual(User.username.nin([2, 5]), {'username': {'$nin': [2 ,5]}})
-        self.assertEqual(~User.username.in_([2, 5]), {'username': {'$nin': [2 ,5]}})
+        self.assertEqual(User.followers.nin([2, 5]), {'followers': {'$nin': [2 ,5]}})
+        self.assertEqual(~User.followers.in_([2, 5]), {'followers': {'$nin': [2 ,5]}})
 
         # all
-        self.assertEqual(User.guilds.all([2, 5]), {'guilds': {'$all': [2 ,5]}})
-        self.assertEqual(~User.guilds.all([2, 5]), {'guilds': {'$not': {'$all': [2 ,5]}}})
+        self.assertEqual(User.followers.all([2, 5]), {'followers': {'$all': [2 ,5]}})
+        self.assertEqual(~User.followers.all([2, 5]), {'followers': {'$not': {'$all': [2 ,5]}}})
 
         # size
-        self.assertEqual(User.guilds.size(5), {'guilds': {'$size': 5}})
-        self.assertEqual(~User.guilds.size(5), {'guilds': {'$not': {'$size': 5}}})
+        self.assertEqual(User.followers.size(5), {'followers': {'$size': 5}})
+        self.assertEqual(~User.followers.size(5), {'followers': {'$not': {'$size': 5}}})
 
         # exists
-        self.assertEqual(User.guilds.exists(), {'guilds': {'$exists': True}})
-        self.assertEqual(~User.guilds.exists(), {'guilds': {'$exists': False}})
+        self.assertEqual(User.followers.exists(), {'followers': {'$exists': True}})
+        self.assertEqual(~User.followers.exists(), {'followers': {'$exists': False}})
 
         # type
-        self.assertEqual(User.username.type(constants.ARRAY), {'username': {'$type': 4}})
-        self.assertEqual(~User.username.type(constants.ARRAY), {'username': {'$not': {'$type': 4}}})
+        self.assertEqual(User.username.type(constants.STRING), {'username': {'$type': 2}})
+        self.assertEqual(~User.username.type(constants.STRING), {'username': {'$not': {'$type': 2}}})
 
         # where
-        self.assertEqual(User.username.where('this.username == 5'), {'username': {'$where': 'this.username == 5'}})
-        self.assertEqual(~User.username.where('this.username == 5'), {'username': {'$not': {'$where': 'this.username == 5'}}})
+        self.assertEqual(User.username.where('this.username == "stan"'), {'username': {'$where': 'this.username == "stan"'}})
+        self.assertEqual(~User.username.where('this.username == "stan"'), {'username': {'$not': {'$where': 'this.username == "stan"'}}})
 
         # slice
-        self.assertEqual(User.guilds[5], {'guilds': {'$slice': 5}})
-        self.assertEqual(User.guilds[5:-1], {'guilds': {'$slice': [5, -1]}})
+        self.assertEqual(User.followers[5], {'followers': {'$slice': 5}})
+        self.assertEqual(User.followers[5:-1], {'followers': {'$slice': [5, -1]}})
 
         # pop
-        self.assertEqual(User.guilds.pop(), {'$pop': {'guilds': 1}})
-        self.assertEqual(User.guilds.popleft(), {'$pop': {'guilds': -1}})
+        self.assertEqual(User.followers.pop(), {'$pop': {'followers': 1}})
+        self.assertEqual(User.followers.popleft(), {'$pop': {'followers': -1}})
 
         # addToset
-        self.assertEqual(User.guilds | 5, {'$addToSet': {'guilds': 5}})
+        self.assertEqual(User.followers | 5, {'$addToSet': {'followers': 5}})
 
         # set
-        self.assertEqual(User.username.set(5), {'$set': {'username': 5}})
+        self.assertEqual(User.username.set('stanislav'), {'$set': {'username': 'stanislav'}})
 
         # unset
         self.assertEqual(User.username.unset(), {'$unset': {'username': 1}})
@@ -107,38 +100,38 @@ class ExpressionTest(TestCase):
         self.assertEqual(User.age - 5, {'$inc': {'age': -5}})
 
         # push
-        self.assertEqual(User.guilds + 5, {'$push': {'guilds': 5}})
-        self.assertEqual(User.guilds.push(5), {'$push': {'guilds': 5}})
+        self.assertEqual(User.followers + 5, {'$push': {'followers': 5}})
+        self.assertEqual(User.followers.push(5), {'$push': {'followers': 5}})
 
         # pushAll
-        self.assertEqual(User.guilds + [1, 5], {'$pushAll': {'guilds': [1, 5]}})
-        self.assertEqual(User.guilds.push_all([1, 5]), {'$pushAll': {'guilds': [1, 5]}})
+        self.assertEqual(User.followers + [1, 5], {'$pushAll': {'followers': [1, 5]}})
+        self.assertEqual(User.followers.push_all([1, 5]), {'$pushAll': {'followers': [1, 5]}})
 
         # pull
-        self.assertEqual(User.guilds - 5, {'$pull': {'guilds': 5}})
-        self.assertEqual(User.guilds.pull(5), {'$pull': {'guilds': 5}})
+        self.assertEqual(User.followers - 5, {'$pull': {'followers': 5}})
+        self.assertEqual(User.followers.pull(5), {'$pull': {'followers': 5}})
 
         # pullAll
-        self.assertEqual(User.guilds - [1, 5], {'$pullAll': {'guilds': [1, 5]}})
-        self.assertEqual(User.guilds.pull_all([1, 5]), {'$pullAll': {'guilds': [1, 5]}})
+        self.assertEqual(User.followers - [1, 5], {'$pullAll': {'followers': [1, 5]}})
+        self.assertEqual(User.followers.pull_all([1, 5]), {'$pullAll': {'followers': [1, 5]}})
 
     def test_or(self):
-        statement = User.guilds == 5
-        statement |= User.guilds == 9
+        statement = User.followers == 5
+        statement |= User.followers == 9
         statement &= ((User.username != 'wamb') | (User.age == 5))
 
         print statement
 
     def test_update(self):
-        self.assertEqual(User.guilds + [2, 5] & User.guilds + [2, 8], {'$pushAll': {'guilds': [2, 5, 2, 8]}})
-        self.assertEqual((User.guilds | 2) & User.guilds + 5, {'$push': {'guilds': 5}, '$addToSet': {'guilds': 2}})
+        self.assertEqual(User.followers + [2, 5] & User.followers + [2, 8], {'$pushAll': {'followers': [2, 5, 2, 8]}})
+        self.assertEqual((User.followers | 2) & User.followers + 5, {'$push': {'followers': 5}, '$addToSet': {'followers': 2}})
         self.assertEqual(User.username.set('wamb') & User.username.set('stan'), {'$set': {'username': 'stan'}})
-        self.assertEqual(User.guilds.unset() & User.username.set('stan'), {'$unset': {'guilds': 1}, '$set': {'username': 'stan'}})
+        self.assertEqual(User.followers.unset() & User.username.set('stan'), {'$unset': {'followers': 1}, '$set': {'username': 'stan'}})
         self.assertEqual(User.age + 2 & User.age - 5, {'$inc': {'age': -3}})
         self.assertEqual(User.age + 2 & User.age.dec(2), {'$inc': {'age': 0}})
 
         # realistic test
-        update = User.username.set(2) & User.guilds.push(5) & User.friends.pop()
-        update &= User.friends.push(10)
+        update = User.username.set('stanislav') & User.followers.push(5) & User.following.pop()
+        update &= User.following.push(10)
 
-        self.assertEqual(update, {'$set': {'username': 2}, '$push': {'friends': 10, 'guilds': 5}, '$pop': {'friends': 1}})
+        self.assertEqual(update, {'$set': {'username': 'stanislav'}, '$push': {'following': 10, 'followers': 5}, '$pop': {'following': 1}})
