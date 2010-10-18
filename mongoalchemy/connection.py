@@ -13,7 +13,7 @@ def _get_connection(hosts):
     if connection is None:
         try:
             connection = _connections[key] = Connection(hosts)
-        except Exception, e:
+        except Exception:
             raise ConnectionError('Cannot connect to the Mongo')
 
     return connection

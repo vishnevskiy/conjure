@@ -1,8 +1,12 @@
 import copy
 import types
 import collections
+import re
 
 class Specification(object):
+    def compile(self, **kwargs):
+        raise NotImplemented()
+
     def __init__(self, expressions):
         if type(expressions) == types.ListType:
             self.expressions = {}
@@ -75,12 +79,15 @@ class UpdateSpecification(Specification):
         return UpdateSpecification(spec)
 
 class QuerySpecification(Specification):
-    def compile(self):
+    def compile(self, prefix=''):
         d = {}
 
         for expr in self:
             key, ops = self._parse_expression(expr)
             val = self[expr]
+
+            if prefix:
+                key = re.sub(r'^' + prefix + r'\.', '', key)
 
             if not key:
                 key = '$' + ops[0]
@@ -92,7 +99,13 @@ class QuerySpecification(Specification):
 
             for op in ops:
                 last_key = '$' + op
-                next = current[last_key] = current.get(last_key, {})
+
+                if type(current) == types.DictType:
+                    next = current[last_key] = current.get(last_key, {})
+                else:
+                    path[-1] = current = {}
+                    next = current[last_key] = current.get(last_key, {})
+
                 path.append(next)
                 current = next
 

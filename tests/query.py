@@ -1,0 +1,513 @@
+import unittest
+import pymongo
+from datetime import datetime
+from mongoalchemy import documents, fields, query, exceptions
+import bson
+
+class QuerySetTest(unittest.TestCase):
+    def setUp(self):
+        class User(documents.Document):
+            _id = fields.ObjectIdField()
+            name = fields.StringField()
+            age = fields.IntegerField()
+
+        self.User = User
+
+    def test_initialisation(self):
+        User = self.User
+
+        self.assertTrue(isinstance(User.objects, query.QuerySet))
+        self.assertEqual(User.objects._collection.name, User._meta['collection'])
+        self.assertTrue(isinstance(User.objects._collection, pymongo.collection.Collection))
+
+    def test_transform_query(self):
+        User = self.User
+
+        self.assertEqual((User.name == 'test') & (User.age == 30), {'name': 'test', 'age': 30})
+        self.assertEqual(User.age < 30, {'age': {'$lt': 30}})
+        self.assertEqual((User.age > 20) & (User.age < 50), {'age': {'$gt': 20, '$lt': 50}})
+        self.assertEqual((User.age > 50) & (User.age == 20), {'age': 20})
+        self.assertEqual(User.name.exists(),  {'name': {'$exists': True}})
+
+    def test_find(self):
+        User = self.User
+
+        user1 = User(name='User A', age=20)
+        user1.save()
+        user2 = User(name='User B', age=30)
+        user2.save()
+
+        users = User.objects
+        self.assertEqual(len(users), 2)
+        results = list(users)
+        self.assertTrue(isinstance(results[0], User))
+        self.assertTrue(isinstance(results[0]._id, (bson.objectid.ObjectId, str, unicode)))
+        self.assertEqual(results[0].name, 'User A')
+        self.assertEqual(results[0].age, 20)
+        self.assertEqual(results[1].name, 'User B')
+        self.assertEqual(results[1].age, 30)
+
+        users = User.objects.filter(User.age == 20)
+        self.assertEqual(len(users), 1)
+        user = users.next()
+        self.assertEqual(user.name, 'User A')
+        self.assertEqual(user.age, 20)
+
+        users = list(User.objects.limit(1))
+        self.assertEqual(len(users), 1)
+        self.assertEqual(users[0].name, 'User A')
+
+        users = list(User.objects.skip(1))
+        self.assertEqual(len(users), 1)
+        self.assertEqual(users[0].name, 'User B')
+
+        user3 = User(name='User C', age=40)
+        user3.save()
+
+        users = list(User.objects[:2])
+        self.assertEqual(len(users), 2)
+        self.assertEqual(users[0].name, 'User A')
+        self.assertEqual(users[1].name, 'User B')
+
+        users = list(User.objects[1:])
+        self.assertEqual(len(users), 2)
+        self.assertEqual(users[0].name, 'User B')
+        self.assertEqual(users[1].name, 'User C')
+
+        users = list(User.objects[1:2])
+        self.assertEqual(len(users), 1)
+        self.assertEqual(users[0].name, 'User B')
+
+        users = list(User.objects[1:1])
+        self.assertEqual(len(users), 0)
+
+    def test_find_one(self):
+        User = self.User
+
+        user1 = User(name='User A', age=20)
+        user1.save()
+        user2 = User(name='User B', age=30)
+        user2.save()
+
+        user = self.User.objects.first()
+        self.assertTrue(isinstance(user, User))
+        self.assertEqual(user.name, 'User A')
+        self.assertEqual(user.age, 20)
+
+        user = User.objects.filter(User.age == 30).first()
+        self.assertEqual(user.name, 'User B')
+
+        user = User.objects.filter(User.age < 30).first()
+        self.assertEqual(user.name, 'User A')
+
+        user = User.objects[0]
+        self.assertEqual(user.name, 'User A')
+
+        user = User.objects[1]
+        self.assertEqual(user.name, 'User B')
+
+        self.assertRaises(IndexError, User.objects.__getitem__, 2)
+
+        user = User.objects.with_id(user1._id)
+        self.assertEqual(user.name, "User A")
+
+    def test_find_only_one(self):
+        User = self.User
+
+        self.assertRaises(exceptions.DoesNotExist, User.objects.first)
+
+        user1 = User(name='User A', age=20)
+        user1.save()
+        user2 = User(name='User B', age=30)
+        user2.save()
+
+        user = User.objects.first(User.age == 30)
+        self.assertEqual(user.name, 'User B')
+
+        user = User.objects.first(User.age < 30)
+        self.assertEqual(user.name, 'User A')
+
+    def test_repeated_iteration(self):
+        User = self.User
+
+        User(name='Person 1', age=20).save()
+        User(name='Person 2', age=22).save()
+
+        qs = self.User.objects
+        users1 = [person for person in qs]
+        users2 = [person for person in qs]
+
+        self.assertEqual(users1, users2)
+
+#    def test_regex_query_shortcuts(self):
+#        """Ensure that contains, startswith, endswith, etc work.
+#        """
+#        person = self.User(name='Guido van Rossum')
+#        person.save()
+#
+#        # Test contains
+#        obj = self.User.objects(name__contains='van').first()
+#        self.assertEqual(obj, person)
+#        obj = self.User.objects(name__contains='Van').first()
+#        self.assertEqual(obj, None)
+#        obj = self.User.objects(Q(name__contains='van')).first()
+#        self.assertEqual(obj, person)
+#        obj = self.User.objects(Q(name__contains='Van')).first()
+#        self.assertEqual(obj, None)
+#
+#        # Test icontains
+#        obj = self.User.objects(name__icontains='Van').first()
+#        self.assertEqual(obj, person)
+#        obj = self.User.objects(Q(name__icontains='Van')).first()
+#        self.assertEqual(obj, person)
+#
+#        # Test startswith
+#        obj = self.User.objects(name__startswith='Guido').first()
+#        self.assertEqual(obj, person)
+#        obj = self.User.objects(name__startswith='guido').first()
+#        self.assertEqual(obj, None)
+#        obj = self.User.objects(Q(name__startswith='Guido')).first()
+#        self.assertEqual(obj, person)
+#        obj = self.User.objects(Q(name__startswith='guido')).first()
+#        self.assertEqual(obj, None)
+#
+#        # Test istartswith
+#        obj = self.User.objects(name__istartswith='guido').first()
+#        self.assertEqual(obj, person)
+#        obj = self.User.objects(Q(name__istartswith='guido')).first()
+#        self.assertEqual(obj, person)
+#
+#        # Test endswith
+#        obj = self.User.objects(name__endswith='Rossum').first()
+#        self.assertEqual(obj, person)
+#        obj = self.User.objects(name__endswith='rossuM').first()
+#        self.assertEqual(obj, None)
+#        obj = self.User.objects(Q(name__endswith='Rossum')).first()
+#        self.assertEqual(obj, person)
+#        obj = self.User.objects(Q(name__endswith='rossuM')).first()
+#        self.assertEqual(obj, None)
+#
+#        # Test iendswith
+#        obj = self.User.objects(name__iendswith='rossuM').first()
+#        self.assertEqual(obj, person)
+#        obj = self.User.objects(Q(name__iendswith='rossuM')).first()
+#        self.assertEqual(obj, person)
+#
+#        # Test exact
+#        obj = self.User.objects(name__exact='Guido van Rossum').first()
+#        self.assertEqual(obj, person)
+#        obj = self.User.objects(name__exact='Guido van rossum').first()
+#        self.assertEqual(obj, None)
+#        obj = self.User.objects(name__exact='Guido van Rossu').first()
+#        self.assertEqual(obj, None)
+#        obj = self.User.objects(Q(name__exact='Guido van Rossum')).first()
+#        self.assertEqual(obj, person)
+#        obj = self.User.objects(Q(name__exact='Guido van rossum')).first()
+#        self.assertEqual(obj, None)
+#        obj = self.User.objects(Q(name__exact='Guido van Rossu')).first()
+#        self.assertEqual(obj, None)
+#
+#        # Test iexact
+#        obj = self.User.objects(name__iexact='gUIDO VAN rOSSUM').first()
+#        self.assertEqual(obj, person)
+#        obj = self.User.objects(name__iexact='gUIDO VAN rOSSU').first()
+#        self.assertEqual(obj, None)
+#        obj = self.User.objects(Q(name__iexact='gUIDO VAN rOSSUM')).first()
+#        self.assertEqual(obj, person)
+#        obj = self.User.objects(Q(name__iexact='gUIDO VAN rOSSU')).first()
+#        self.assertEqual(obj, None)
+
+    def test_filter_chaining(self):
+        class BlogPost(documents.Document):
+            _id = fields.ObjectIdField()
+            title = fields.StringField()
+            is_published = fields.BooleanField()
+            published_date = fields.DateTimeField()
+
+        blog_post_1 = BlogPost(title='Blog Post #1', is_published=True, published_date=datetime(2010, 1, 5, 0, 0 ,0))
+        blog_post_2 = BlogPost(title='Blog Post #2', is_published=True, published_date=datetime(2010, 1, 6, 0, 0 ,0))
+        blog_post_3 = BlogPost(title='Blog Post #3', is_published=True, published_date=datetime(2010, 1, 7, 0, 0 ,0))
+
+        blog_post_1.save()
+        blog_post_2.save()
+        blog_post_3.save()
+
+        published_posts = BlogPost.objects.filter_by(is_published=True).filter(BlogPost.published_date < datetime(2010, 1, 7, 0, 0 ,0))
+
+        self.assertEqual(published_posts.count(), 2)
+
+        BlogPost.drop_collection()
+
+    def test_sort1(self):
+        class BlogPost(documents.Document):
+            _id = fields.ObjectIdField()
+            title = fields.StringField()
+            published_date = fields.DateTimeField()
+
+        BlogPost.drop_collection()
+
+        blog_post_1 = BlogPost(title='Blog Post #1', published_date=datetime(2010, 1, 5, 0, 0 ,0))
+        blog_post_2 = BlogPost(title='Blog Post #2', published_date=datetime(2010, 1, 6, 0, 0 ,0))
+        blog_post_3 = BlogPost(title='Blog Post #3', published_date=datetime(2010, 1, 7, 0, 0 ,0))
+
+        blog_post_1.save()
+        blog_post_2.save()
+        blog_post_3.save()
+
+        latest_post = BlogPost.objects.sort('-published_date').first()
+        self.assertEqual(latest_post.title, "Blog Post #3")
+
+        first_post = BlogPost.objects.sort('+published_date').first()
+        self.assertEqual(first_post.title, "Blog Post #1")
+
+        BlogPost.drop_collection()
+
+    def test_only(self):
+        User = self.User
+
+        user = User(name='test', age=25)
+        user.save()
+
+        obj = User.objects.only('name').one()
+        self.assertEqual(obj.name, user.name)
+        self.assertEqual(obj.age, None)
+
+        obj = User.objects.only('age').one()
+        self.assertEqual(obj.name, None)
+        self.assertEqual(obj.age, user.age)
+
+        obj = User.objects.only('name', 'age').one()
+        self.assertEqual(obj.name, user.name)
+        self.assertEqual(obj.age, user.age)
+
+        class Employee(User):
+            salary = fields.IntegerField()
+
+        employee = Employee(name='test employee', age=40, salary=30000)
+        employee.save()
+
+        obj = Employee.objects.filter_by(_id=employee._id).only('salary').one()
+        self.assertEqual(obj.salary, employee.salary)
+        self.assertEqual(obj.name, None)
+
+    def test_find_embedded(self):
+        class User(documents.Document):
+            name = fields.StringField()
+
+            class Meta:
+                embedded = True
+
+        class BlogPost(documents.Document):
+            _id = fields.ObjectIdField()
+            content = fields.StringField()
+            author = fields.EmbeddedDocumentField(User)
+
+        BlogPost.drop_collection()
+
+        post = BlogPost(content='Had a good coffee today...')
+        post.author = User(name='Test User')
+        post.save()
+
+        result = BlogPost.objects.first()
+        self.assertTrue(isinstance(result.author, User))
+        self.assertEqual(result.author.name, 'Test User')
+
+        BlogPost.drop_collection()
+
+    def test_find_dict_item(self):
+        class BlogPost(documents.Document):
+            _id = fields.ObjectIdField()
+            info = fields.DictField()
+
+        BlogPost.drop_collection()
+
+        post = BlogPost(info={'title': 'test'})
+        post.save()
+
+        post_obj = BlogPost.objects.filter(BlogPost.info['title'] == 'test').first()
+        self.assertEqual(post_obj._id, post._id)
+
+        BlogPost.drop_collection()
+
+    def test_delete(self):
+        User = self.User
+
+        User(name='User A', age=20).save()
+        User(name='User B', age=30).save()
+        User(name='User C', age=40).save()
+
+        self.assertEqual(len(User.objects), 3)
+
+        User.objects.filter(User.age < 30).delete()
+        self.assertEqual(len(User.objects), 2)
+
+        User.objects.delete()
+        self.assertEqual(len(User.objects), 0)
+
+    def test_update(self):
+        class BlogPost(documents.Document):
+            _id = fields.ObjectIdField()
+            title = fields.StringField()
+            hits = fields.IntegerField()
+            tags = fields.ListField(fields.StringField())
+
+        BlogPost.drop_collection()
+
+        post = BlogPost(title='Test Post', hits=5, tags=['test'])
+        post.save()
+
+        BlogPost.objects.update(BlogPost.hits.set(10))
+        post.reload()
+        self.assertEqual(post.hits, 10)
+
+        BlogPost.objects.update_one(BlogPost.hits + 1)
+        post.reload()
+        self.assertEqual(post.hits, 11)
+
+        BlogPost.objects.update_one(BlogPost.hits - 1)
+        post.reload()
+        self.assertEqual(post.hits, 10)
+
+        BlogPost.objects.update(BlogPost.tags + 'mongo')
+        post.reload()
+        self.assertTrue('mongo' in post.tags)
+
+        BlogPost.objects.update_one(BlogPost.tags + ['db', 'nosql'])
+        post.reload()
+        self.assertTrue('db' in post.tags and 'nosql' in post.tags)
+
+        BlogPost.drop_collection()
+
+    def test_update_pull(self):
+        class Comment(documents.Document):
+            content = fields.StringField()
+
+            class Meta:
+                embedded = True
+
+        class BlogPost(documents.Document):
+            _id = fields.ObjectIdField()
+            slug = fields.StringField()
+            comments = fields.ListField(fields.EmbeddedDocumentField(Comment))
+
+        comment1 = Comment(content='test1')
+        comment2 = Comment(content='test2')
+
+        post = BlogPost(slug='test', comments=[comment1, comment2])
+        post.save()
+        self.assertTrue(comment2 in post.comments)
+
+        BlogPost.objects.filter_by(slug='test').update(BlogPost.comments - (Comment.content == 'test2'))
+        post.reload()
+        
+        self.assertTrue(comment2 not in post.comments)
+
+    def test_sort2(self):
+        User = self.User
+
+        User(name='User A', age=20).save()
+        User(name='User B', age=40).save()
+        User(name='User C', age=30).save()
+
+        names = [p.name for p in User.objects.sort('-age')]
+        self.assertEqual(names, ['User B', 'User C', 'User A'])
+
+        names = [p.name for p in User.objects.sort('+age')]
+        self.assertEqual(names, ['User A', 'User C', 'User B'])
+
+        names = [p.name for p in User.objects.sort('age')]
+        self.assertEqual(names, ['User A', 'User C', 'User B'])
+
+        ages = [p.age for p in User.objects.sort('-name')]
+        self.assertEqual(ages, [30, 40, 20])
+
+#    def test_query_value_conversion(self):
+#        """Ensure that query values are properly converted when necessary.
+#        """
+#        class BlogPost(Document):
+#            author = ReferenceField(self.User)
+#
+#        BlogPost.drop_collection()
+#
+#        person = self.User(name='test', age=30)
+#        person.save()
+#
+#        post = BlogPost(author=person)
+#        post.save()
+#
+#        # Test that query may be performed by providing a document as a value
+#        # while using a ReferenceField's name - the document should be
+#        # converted to an DBRef, which is legal, unlike a Document object
+#        post_obj = BlogPost.objects(author=person).first()
+#        self.assertEqual(post.id, post_obj.id)
+#
+#        # Test that lists of values work when using the 'in', 'nin' and 'all'
+#        post_obj = BlogPost.objects(author__in=[person]).first()
+#        self.assertEqual(post.id, post_obj.id)
+#
+#        BlogPost.drop_collection()
+#
+#    def test_update_value_conversion(self):
+#        """Ensure that values used in updates are converted before use.
+#        """
+#        class Group(Document):
+#            members = ListField(ReferenceField(self.User))
+#
+#        Group.drop_collection()
+#
+#        user1 = self.User(name='user1')
+#        user1.save()
+#        user2 = self.User(name='user2')
+#        user2.save()
+#
+#        group = Group()
+#        group.save()
+#
+#        Group.objects(id=group.id).update(set__members=[user1, user2])
+#        group.reload()
+#
+#        self.assertTrue(len(group.members) == 2)
+#        self.assertEqual(group.members[0].name, user1.name)
+#        self.assertEqual(group.members[1].name, user2.name)
+#
+#        Group.drop_collection()
+#
+    def test_bulk(self):
+        class BlogPost(documents.Document):
+            _id = fields.ObjectIdField()
+            title = fields.StringField()
+
+        BlogPost.drop_collection()
+
+        post_1 = BlogPost(title='Post #1')
+        post_2 = BlogPost(title='Post #2')
+        post_3 = BlogPost(title='Post #3')
+        post_4 = BlogPost(title='Post #4')
+        post_5 = BlogPost(title='Post #5')
+
+        post_1.save()
+        post_2.save()
+        post_3.save()
+        post_4.save()
+        post_5.save()
+
+        ids = [post_1._id, post_2._id, post_5._id]
+        objects = BlogPost.objects.in_bulk(ids)
+
+        self.assertEqual(len(objects), 3)
+
+        self.assertTrue(post_1._id in objects)
+        self.assertTrue(post_2._id in objects)
+        self.assertTrue(post_5._id in objects)
+
+        self.assertTrue(objects[post_1._id].title == post_1.title)
+        self.assertTrue(objects[post_2._id].title == post_2.title)
+        self.assertTrue(objects[post_5._id].title == post_5.title)
+
+        BlogPost.drop_collection()
+
+    def tearDown(self):
+        self.User.drop_collection()
+
+if __name__ == '__main__':
+    unittest.main()

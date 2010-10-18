@@ -55,7 +55,7 @@ class DocumentMetaclass(type):
 
         attrs['_meta'] = _meta
 
-        for attr_name, attr_value in attrs.items():
+        for attr_name, attr_value in attrs.iteritems():
             if hasattr(attr_value, '__class__') and issubclass(attr_value.__class__, fields.Field):
                 attr_value.name = attr_name
                 _fields[attr_name] = attr_value
@@ -80,6 +80,12 @@ class DocumentMetaclass(type):
         return new_cls
 
 class BaseDocument(object):
+    # START - just so autocomplete works
+    objects = query.QuerySet(None, None)
+    _fields = {}
+    _meta = {}
+    # END
+
     def __init__(self, **data):
         self._data = {}
 
@@ -132,22 +138,8 @@ class BaseDocument(object):
 
             return '%s object' % self.__class__.__name__
 
-    def to_mongo(self):
-        doc = {}
-
-        for field_name, field in self._fields.iteritems():
-            value = getattr(self, field_name, None)
-
-            if value is not None:
-                doc[field.name] = field.to_mongo(value)
-
-        if not self._meta['embedded']:
-            doc['_cls'] = self.__class__.__name__
-
-        return doc
-
     @classmethod
-    def from_mongo(cls, doc):
+    def to_python(cls, doc):
         if '_cls' in doc:
             if doc['_cls'] != cls.__name__:
                 pass # TODO: implement
@@ -162,6 +154,20 @@ class BaseDocument(object):
 
         return doc
 
+    def to_mongo(self):
+        doc = {}
+
+        for field_name, field in self._fields.iteritems():
+            value = getattr(self, field_name, None)
+
+            if value is not None:
+                doc[field.name] = field.to_mongo(value)
+
+        if not self._meta['embedded']:
+            doc['_cls'] = self.__class__.__name__
+
+        return doc
+
     def validate(self):
         fields = [(field, getattr(self, name)) for name, field in self._fields.iteritems()]
 
@@ -169,7 +175,7 @@ class BaseDocument(object):
             if value is not None:
                 try:
                     field._validate(value)
-                except (ValueError, AttributeError, AssertionError), e:
+                except (ValueError, AttributeError, AssertionError):
                     raise exceptions.ValidationError('Invalid value for field of type "' +
                                                      field.__class__.__name__ + '"')
             elif not field.name == '_id' and field.required:
@@ -177,7 +183,10 @@ class BaseDocument(object):
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
-            return self._id == other._id
+            if hasattr(self, '_id') and hasattr(other, '_id'):
+                return self._id == other._id
+
+            return self._data == other._data
 
         return False
 
@@ -213,4 +222,8 @@ class Document(BaseDocument):
         doc = self.__class__.objects.filter_by(_id=self._id)._one()
         
         for field in self._fields:
-            setattr(self, field, doc.get(field))
+            setattr(self, field, self._fields[field].to_python(doc.get(field)))
+
+    @classmethod
+    def drop_collection(cls):
+        cls.objects._collection.drop()

@@ -2,6 +2,7 @@ from mongoalchemy.connection import connect
 import spec
 import exceptions
 import pymongo
+import fields
 
 class Manager(object):
     def __init__(self):
@@ -25,7 +26,7 @@ class QuerySet(object):
         self._pymongo_cursor = None
         self._fields = None
 
-    def _transform_key_list(keys):
+    def _transform_key_list(self, keys):
         transformed_keys = []
 
         for key in keys.split():
@@ -76,14 +77,14 @@ class QuerySet(object):
         return self
 
     def one(self):
-        return self._document_cls.from_mongo(self._one())
+        return self._document_cls.to_python(self._one())
 
     def _one(self):
         return self._collection.find_one(self._spec.compile(), fields=self._fields)
 
-    def first(self):
+    def first(self, *expressions):
         try:
-            return self[0]
+            return self.filter(*expressions)[0]
         except IndexError:
             raise exceptions.DoesNotExist()
 
@@ -99,7 +100,7 @@ class QuerySet(object):
 
     def next(self):
         try:
-            return self._document_cls.from_mongo(self._cursor.next())
+            return self._document_cls.to_python(self._cursor.next())
         except StopIteration, e:
             self.rewind()
             raise e
@@ -127,22 +128,18 @@ class QuerySet(object):
             self._pymongo_cursor = self._cursor[key]
             return self
         elif isinstance(key, int):
-            return self._document_cls.from_mongo(self._cursor[key])
+            return self._document_cls.to_python(self._cursor[key])
 
-    def only(self, *fields):
-        self._fields = ['_cls']
+    def only(self, *exprs):
+        self._fields = {'_cls': 1}
 
-        for field in fields:
-            if isinstance(field, basestring):
-                self._fields.append({
-                    field: 1
-                })
-            elif isinstance(field, fields.Field):
-                self._fields.append({
-                    field.name: 1
-                })
-            elif isinstance(field, spec.Slice):
-                self._fields.append(field.compile())
+        for expr in exprs:
+            if isinstance(expr, basestring):
+                self._fields[expr] = 1
+            elif isinstance(expr, fields.Field):
+                self._fields[expr.name] = 1
+            elif isinstance(expr, spec.Slice):
+                self._fields.update(expr.compile())
                 
         return self
 
@@ -164,7 +161,6 @@ class QuerySet(object):
 
     def _update(self, update, safe, upsert, multi):
        try:
-           print update, safe, upsert, multi
            self._collection.update(self._spec.compile(), update, safe=safe, upsert=upsert, multi=multi)
        except pymongo.errors.OperationFailure, err:
            raise exceptions.OperationError(unicode(err))
