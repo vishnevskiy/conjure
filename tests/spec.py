@@ -9,7 +9,6 @@ class Settings(documents.Document):
         embedded = True
 
 class User(documents.Document):
-    _id = fields.ObjectIdField()
     username = fields.StringField()
     email = fields.EmailField()
     following = fields.ListField(fields.ObjectIdField())

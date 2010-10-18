@@ -15,7 +15,6 @@ class FieldTest(unittest.TestCase):
 
     def test_required_values(self):
         class User(documents.Document):
-            _id = fields.ObjectIdField()
             name = fields.StringField(required=True)
             age = fields.IntegerField(required=True)
             userid = fields.StringField()
@@ -27,7 +26,6 @@ class FieldTest(unittest.TestCase):
 
     def test_object_id_validation(self):
         class User(documents.Document):
-            _id = fields.ObjectIdField()
             name = fields.StringField()
 
         user = User(name='Test User')
@@ -65,7 +63,6 @@ class FieldTest(unittest.TestCase):
 
     def test_int_validation(self):
         class User(documents.Document):
-            _id = fields.ObjectIdField()
             age = fields.IntegerField(min_value=0, max_value=110)
 
         user = User()
@@ -81,7 +78,6 @@ class FieldTest(unittest.TestCase):
 
     def test_float_validation(self):
         class User(documents.Document):
-            _id = fields.ObjectIdField()
             height = fields.FloatField(min_value=0.1, max_value=3.5)
 
         user = User()
@@ -97,7 +93,6 @@ class FieldTest(unittest.TestCase):
 
     def test_boolean_validation(self):
         class User(documents.Document):
-            _id = fields.ObjectIdField()
             admin = fields.BooleanField()
 
         user = User()
@@ -111,7 +106,6 @@ class FieldTest(unittest.TestCase):
 
     def test_datetime_validation(self):
         class LogEntry(documents.Document):
-            _id = fields.ObjectIdField()
             time = fields.DateTimeField()
 
         log = LogEntry()
@@ -124,14 +118,10 @@ class FieldTest(unittest.TestCase):
         self.assertRaises(exceptions.ValidationError, log.validate)
 
     def test_list_validation(self):
-        class Comment(documents.Document):
+        class Comment(documents.EmbeddedDocument):
             content = fields.StringField()
 
-            class Meta:
-                embedded = True
-
         class BlogPost(documents.Document):
-            _id = fields.ObjectIdField()
             content = fields.StringField()
             comments = fields.ListField(fields.EmbeddedDocumentField(Comment))
             tags = fields.ListField(fields.StringField())
@@ -160,7 +150,6 @@ class FieldTest(unittest.TestCase):
 
     def test_dict_validation(self):
         class BlogPost(documents.Document):
-            _id = fields.ObjectIdField()
             info = fields.DictField()
 
         post = BlogPost()
@@ -180,21 +169,14 @@ class FieldTest(unittest.TestCase):
         post.validate()
 
     def test_embedded_document_validation(self):
-        class Comment(documents.Document):
+        class Comment(documents.EmbeddedDocument):
             content = fields.StringField()
 
-            class Meta:
-                embedded = True
-
-        class PersonPreferences(documents.Document):
+        class PersonPreferences(documents.EmbeddedDocument):
             food = fields.StringField(required=True)
             number = fields.IntegerField()
 
-            class Meta:
-                embedded = True
-
         class Person(documents.Document):
-            _id = fields.ObjectIdField()
             name = fields.StringField()
             preferences = fields.EmbeddedDocumentField(PersonPreferences)
 
@@ -213,17 +195,13 @@ class FieldTest(unittest.TestCase):
         person.validate()
 
     def test_embedded_document_inheritance(self):
-        class User(documents.Document):
+        class User(documents.EmbeddedDocument):
             name = fields.StringField()
-
-            class Meta:
-                embedded = True
 
         class PowerUser(User):
             power = fields.IntegerField()
 
         class BlogPost(documents.Document):
-            _id = fields.ObjectIdField()
             content = fields.StringField()
             author = fields.EmbeddedDocumentField(User)
 
@@ -445,7 +423,6 @@ class FieldTest(unittest.TestCase):
 
     def test_choices_validation(self):
         class Shirt(documents.Document):
-            _id = fields.ObjectIdField()
             size = fields.StringField(max_length=3, choices=('S','M','L','XL','XXL'))
 
         Shirt.drop_collection()

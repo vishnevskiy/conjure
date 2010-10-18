@@ -5,36 +5,26 @@ import pymongo
 
 _cls_index = {}
 
-class DocumentMetaclass(type):
+class DocumentMeta(type):
     def __new__(cls, name, bases, attrs):
         metaclass = attrs.get('__metaclass__')
-        super_new = super(DocumentMetaclass, cls).__new__
+        super_new = super(DocumentMeta, cls).__new__
         
-        if metaclass and issubclass(metaclass, DocumentMetaclass):
+        if metaclass and issubclass(metaclass, DocumentMeta):
             return super_new(cls, name, bases, attrs)
 
         _fields = {}
 
-        Meta = attrs.pop('Meta', None)
-
-        if Meta and getattr(Meta, 'embedded', False):
-            _meta = {
-                'embedded': True
-            }
-        else:
-            _meta = {
-                'db': 'mongodb://localhost:27017/main',
-                'collection': name.lower() + 's',
-                'sorting': [],
-                'get_latest_by': [],
-                'indexes': [],
-                'embedded': False
-            }
-
-        _meta.update({
+        _meta = {
+            'db': 'mongodb://localhost:27017/main',
             'verbose_name': name.lower(),
             'verbose_name_plural': name.lower() + 's',
-         })
+            'collection': name.lower() + 's',
+            'sorting': [],
+            'get_latest_by': [],
+            'indexes': [],
+            'embedded': False
+        }
 
         for base in bases:
             if hasattr(base, '_fields'):
@@ -53,13 +43,20 @@ class DocumentMetaclass(type):
                 if hasattr(Meta, k):
                     _meta[k] = getattr(Meta, k)
 
-        attrs['_meta'] = _meta
-
         for attr_name, attr_value in attrs.iteritems():
             if hasattr(attr_value, '__class__') and issubclass(attr_value.__class__, fields.Field):
                 attr_value.name = attr_name
                 _fields[attr_name] = attr_value
 
+        if _meta['embedded']:
+            _meta = dict([(k, _meta[k]) for k in ['embedded', 'verbose_name', 'verbose_name_plural']])
+        elif '_id' not in _fields:
+            _id = fields.ObjectIdField()
+            _id.name = '_id'
+            _fields['_id'] = _id
+            attrs['_id'] = _id
+            
+        attrs['_meta'] = _meta
         attrs['_fields'] = _fields
 
         new_cls = super_new(cls, name, bases, attrs)
@@ -68,9 +65,6 @@ class DocumentMetaclass(type):
             field.owner = new_cls
 
         if not _meta['embedded']:
-            if '_id' not in _fields:
-                raise exceptions.DocumentError('Missing "_id" field on "%s"' % new_cls.__name__)
-
             new_cls.objects = query.Manager()
             _meta['cls_key'] = '%s/%s:%s' % (_meta['db'], _meta['collection'], name)
 
@@ -80,7 +74,6 @@ class DocumentMetaclass(type):
         return new_cls
 
 class BaseDocument(object):
-    objects = query.Query(None, None)
     _fields = {}
     _meta = {}
 
@@ -183,14 +176,17 @@ class BaseDocument(object):
     def __eq__(self, other):
         if isinstance(other, self.__class__):
             if hasattr(self, '_id') and hasattr(other, '_id'):
-                return self._id == other._id
+                return self._id == other._id 
 
             return self._data == other._data
 
         return False
 
 class Document(BaseDocument):
-    __metaclass__ = DocumentMetaclass
+    __metaclass__ = DocumentMeta
+
+    _id = fields.ObjectIdField()
+    objects = query.Query(None, None)
 
     def save(self, safe=True, insert=False):
         self.validate()
@@ -223,6 +219,10 @@ class Document(BaseDocument):
         for field in self._fields:
             setattr(self, field, self._fields[field].to_python(doc.get(field)))
 
-    @classmethod
+    @classmethod 
     def drop_collection(cls):
         cls.objects._collection.drop()
+
+class EmbeddedDocument(BaseDocument):
+    __metaclass__ = DocumentMeta
+    _meta = {'embedded': True}

@@ -7,7 +7,6 @@ import bson
 class QueryTest(unittest.TestCase):
     def setUp(self):
         class User(documents.Document):
-            _id = fields.ObjectIdField()
             name = fields.StringField()
             age = fields.IntegerField()
 
@@ -162,7 +161,6 @@ class QueryTest(unittest.TestCase):
 
     def test_filter_chaining(self):
         class BlogPost(documents.Document):
-            _id = fields.ObjectIdField()
             title = fields.StringField()
             is_published = fields.BooleanField()
             published_date = fields.DateTimeField()
@@ -183,7 +181,6 @@ class QueryTest(unittest.TestCase):
 
     def test_sort1(self):
         class BlogPost(documents.Document):
-            _id = fields.ObjectIdField()
             title = fields.StringField()
             published_date = fields.DateTimeField()
 
@@ -223,7 +220,7 @@ class QueryTest(unittest.TestCase):
         self.assertEqual(obj.name, user.name)
         self.assertEqual(obj.age, user.age)
 
-        class Employee(User):
+        class Employee(User): 
             salary = fields.IntegerField()
 
         employee = Employee(name='test employee', age=40, salary=30000)
@@ -234,14 +231,10 @@ class QueryTest(unittest.TestCase):
         self.assertEqual(obj.name, None)
 
     def test_find_embedded(self):
-        class User(documents.Document):
+        class User(documents.EmbeddedDocument):
             name = fields.StringField()
 
-            class Meta:
-                embedded = True
-
         class BlogPost(documents.Document):
-            _id = fields.ObjectIdField()
             content = fields.StringField()
             author = fields.EmbeddedDocumentField(User)
 
@@ -259,7 +252,6 @@ class QueryTest(unittest.TestCase):
 
     def test_find_dict_item(self):
         class BlogPost(documents.Document):
-            _id = fields.ObjectIdField()
             info = fields.DictField()
 
         BlogPost.drop_collection()
@@ -289,7 +281,6 @@ class QueryTest(unittest.TestCase):
 
     def test_update(self):
         class BlogPost(documents.Document):
-            _id = fields.ObjectIdField()
             title = fields.StringField()
             hits = fields.IntegerField()
             tags = fields.ListField(fields.StringField())
@@ -322,14 +313,10 @@ class QueryTest(unittest.TestCase):
         BlogPost.drop_collection()
 
     def test_update_pull(self):
-        class Comment(documents.Document):
+        class Comment(documents.EmbeddedDocument):
             content = fields.StringField()
 
-            class Meta:
-                embedded = True
-
         class BlogPost(documents.Document):
-            _id = fields.ObjectIdField()
             slug = fields.StringField()
             comments = fields.ListField(fields.EmbeddedDocumentField(Comment))
 
@@ -417,7 +404,6 @@ class QueryTest(unittest.TestCase):
 #
     def test_bulk(self):
         class BlogPost(documents.Document):
-            _id = fields.ObjectIdField()
             title = fields.StringField()
 
         BlogPost.drop_collection()
