@@ -91,7 +91,7 @@ class ObjectIdField(Field):
         except bson.objectid.InvalidId:
             raise exceptions.ValidationError('Invalid Object ID')
 
-class StringField(Field):
+class StringField(operations.String, Field):
     def __init__(self, regex=None, min_length=None, max_length=None, **kwargs):
         self.regex = re.compile(regex) if regex else None
         self.min_length = min_length

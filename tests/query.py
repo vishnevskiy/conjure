@@ -4,30 +4,21 @@ from datetime import datetime
 from mongoalchemy import documents, fields, query, exceptions
 import bson
 
-class QuerySetTest(unittest.TestCase):
+class QueryTest(unittest.TestCase):
     def setUp(self):
         class User(documents.Document):
             _id = fields.ObjectIdField()
             name = fields.StringField()
-            age = fields.IntegerField()
+            age = fields.IntegerField(required=False)
 
         self.User = User
 
     def test_initialisation(self):
         User = self.User
 
-        self.assertTrue(isinstance(User.objects, query.QuerySet))
+        self.assertTrue(isinstance(User.objects, query.Query))
         self.assertEqual(User.objects._collection.name, User._meta['collection'])
         self.assertTrue(isinstance(User.objects._collection, pymongo.collection.Collection))
-
-    def test_transform_query(self):
-        User = self.User
-
-        self.assertEqual((User.name == 'test') & (User.age == 30), {'name': 'test', 'age': 30})
-        self.assertEqual(User.age < 30, {'age': {'$lt': 30}})
-        self.assertEqual((User.age > 20) & (User.age < 50), {'age': {'$gt': 20, '$lt': 50}})
-        self.assertEqual((User.age > 50) & (User.age == 20), {'age': 20})
-        self.assertEqual(User.name.exists(),  {'name': {'$exists': True}})
 
     def test_find(self):
         User = self.User
@@ -133,89 +124,41 @@ class QuerySetTest(unittest.TestCase):
         User(name='Person 1', age=20).save()
         User(name='Person 2', age=22).save()
 
-        qs = self.User.objects
-        users1 = [person for person in qs]
-        users2 = [person for person in qs]
+        q = self.User.objects
+        users1 = [person for person in q]
+        users2 = [person for person in q]
 
         self.assertEqual(users1, users2)
 
-#    def test_regex_query_shortcuts(self):
-#        """Ensure that contains, startswith, endswith, etc work.
-#        """
-#        person = self.User(name='Guido van Rossum')
-#        person.save()
-#
-#        # Test contains
-#        obj = self.User.objects(name__contains='van').first()
-#        self.assertEqual(obj, person)
-#        obj = self.User.objects(name__contains='Van').first()
-#        self.assertEqual(obj, None)
-#        obj = self.User.objects(Q(name__contains='van')).first()
-#        self.assertEqual(obj, person)
-#        obj = self.User.objects(Q(name__contains='Van')).first()
-#        self.assertEqual(obj, None)
-#
-#        # Test icontains
-#        obj = self.User.objects(name__icontains='Van').first()
-#        self.assertEqual(obj, person)
-#        obj = self.User.objects(Q(name__icontains='Van')).first()
-#        self.assertEqual(obj, person)
-#
-#        # Test startswith
-#        obj = self.User.objects(name__startswith='Guido').first()
-#        self.assertEqual(obj, person)
-#        obj = self.User.objects(name__startswith='guido').first()
-#        self.assertEqual(obj, None)
-#        obj = self.User.objects(Q(name__startswith='Guido')).first()
-#        self.assertEqual(obj, person)
-#        obj = self.User.objects(Q(name__startswith='guido')).first()
-#        self.assertEqual(obj, None)
-#
-#        # Test istartswith
-#        obj = self.User.objects(name__istartswith='guido').first()
-#        self.assertEqual(obj, person)
-#        obj = self.User.objects(Q(name__istartswith='guido')).first()
-#        self.assertEqual(obj, person)
-#
-#        # Test endswith
-#        obj = self.User.objects(name__endswith='Rossum').first()
-#        self.assertEqual(obj, person)
-#        obj = self.User.objects(name__endswith='rossuM').first()
-#        self.assertEqual(obj, None)
-#        obj = self.User.objects(Q(name__endswith='Rossum')).first()
-#        self.assertEqual(obj, person)
-#        obj = self.User.objects(Q(name__endswith='rossuM')).first()
-#        self.assertEqual(obj, None)
-#
-#        # Test iendswith
-#        obj = self.User.objects(name__iendswith='rossuM').first()
-#        self.assertEqual(obj, person)
-#        obj = self.User.objects(Q(name__iendswith='rossuM')).first()
-#        self.assertEqual(obj, person)
-#
-#        # Test exact
-#        obj = self.User.objects(name__exact='Guido van Rossum').first()
-#        self.assertEqual(obj, person)
-#        obj = self.User.objects(name__exact='Guido van rossum').first()
-#        self.assertEqual(obj, None)
-#        obj = self.User.objects(name__exact='Guido van Rossu').first()
-#        self.assertEqual(obj, None)
-#        obj = self.User.objects(Q(name__exact='Guido van Rossum')).first()
-#        self.assertEqual(obj, person)
-#        obj = self.User.objects(Q(name__exact='Guido van rossum')).first()
-#        self.assertEqual(obj, None)
-#        obj = self.User.objects(Q(name__exact='Guido van Rossu')).first()
-#        self.assertEqual(obj, None)
-#
-#        # Test iexact
-#        obj = self.User.objects(name__iexact='gUIDO VAN rOSSUM').first()
-#        self.assertEqual(obj, person)
-#        obj = self.User.objects(name__iexact='gUIDO VAN rOSSU').first()
-#        self.assertEqual(obj, None)
-#        obj = self.User.objects(Q(name__iexact='gUIDO VAN rOSSUM')).first()
-#        self.assertEqual(obj, person)
-#        obj = self.User.objects(Q(name__iexact='gUIDO VAN rOSSU')).first()
-#        self.assertEqual(obj, None)
+    def test_regex_query_shortcuts(self):
+        User = self.User
+
+        user = User(name='Guido van Rossum')
+        user.save()
+
+        obj = User.objects.filter(User.name.contains('van')).one()
+        self.assertEqual(obj, user)
+        obj = User.objects.filter(User.name.contains('Van')).one()
+        self.assertEqual(obj, None)
+
+        obj = User.objects.filter(User.name.icontains('Van')).one()
+        self.assertEqual(obj, user)
+
+        obj = User.objects.filter(User.name.startswith('Guido')).one()
+        self.assertEqual(obj, user)
+        obj = User.objects.filter(User.name.startswith('guido')).one()
+        self.assertEqual(obj, None)
+
+        obj = User.objects.filter(User.name.istartswith('guido')).one()
+        self.assertEqual(obj, user)
+
+        obj = User.objects.filter(User.name.endswith('Rossum')).one()
+        self.assertEqual(obj, user)
+        obj = User.objects.filter(User.name.endswith('rossuM')).one()
+        self.assertEqual(obj, None)
+
+        obj = User.objects.filter(User.name.iendswith('rossuM')).one()
+        self.assertEqual(obj, user)
 
     def test_filter_chaining(self):
         class BlogPost(documents.Document):

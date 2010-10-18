@@ -1,5 +1,6 @@
 from mongoalchemy import spec
 import types
+import re
 
 class _Base(object):
     def get_key(self, *args, **kwargs):
@@ -69,6 +70,31 @@ class Common(_Base):
 
     def unset(self):
         return spec.UpdateSpecification(['unset', self.get_key(True), 1])
+
+class String(_Base):
+    def startswith(self, value):
+        return self.re(r'^%s' % value)
+
+    def istartswith(self, value):
+        return self.ire(r'^%s' % value)
+
+    def endswith(self, value):
+        return self.re(r'%s$' % value)
+
+    def iendswith(self, value):
+        return self.ire(r'%s$' % value)
+
+    def contains(self, value):
+        return self.re(r'%s' % value)
+
+    def icontains(self, value):
+        return self.ire(r'%s' % value)
+
+    def re(self, pattern):
+        return spec.Equal([self.get_key(), '', re.compile(pattern)])
+
+    def ire(self, pattern):
+        return spec.Equal([self.get_key(), '', re.compile(pattern, re.IGNORECASE)])
 
 class Number(_Base):
     def __add__(self, val):

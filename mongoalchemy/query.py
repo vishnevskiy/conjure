@@ -16,9 +16,9 @@ class Manager(object):
             db = connect(owner._meta['db'])
             self._collection = db[owner._meta['collection']]
 
-        return QuerySet(owner, self._collection)
+        return Query(owner, self._collection)
 
-class QuerySet(object):
+class Query(object):
     def __init__(self, document_cls, collection):
         self._document_cls = document_cls
         self._collection = collection

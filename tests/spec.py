@@ -1,4 +1,4 @@
-from mongoalchemy import fields, documents, constants
+from mongoalchemy import fields, documents, enums
 from unittest import TestCase
 import datetime
 import bson
@@ -18,14 +18,14 @@ class User(documents.Document):
     age = fields.IntegerField()
     settings = fields.EmbeddedDocumentField(Settings)
     joined_on = fields.DateTimeField(default=datetime.datetime.now)
-    
+
     def __unicode__(self):
         return self.username
 
     class Meta:
         indexes = ['username', '-followers']
 
-class ExpressionTest(TestCase):
+class SpecTest(TestCase):
     def test_basic(self):
         # eq
         self.assertEqual(User.username == 'stanislav', {'username': 'stanislav'})
@@ -34,7 +34,7 @@ class ExpressionTest(TestCase):
         # ne
         self.assertEqual(User.username != 5, {'username': {'$ne': 5}})
         self.assertEqual(~(User.username == 5), {'username': {'$ne': 5}})
-        
+
         # lt
         self.assertEqual(User.username < 5, {'username': {'$lt': 5}})
         self.assertEqual(~(User.username > 5), {'username': {'$lt': 5}})
@@ -56,7 +56,7 @@ class ExpressionTest(TestCase):
         self.assertEqual(User.age % 10 == 0, {'age': {'$mod': [10, 0]}})
         self.assertEqual(User.age % 10 != 0, {'age': {'$not': {'$mod': [10, 0]}}})
         self.assertEqual(~(User.age % 10 == 0), {'age': {'$not': {'$mod': [10, 0]}}})
-        
+
         # in
         self.assertEqual(User.followers.in_([2, 5]), {'followers': {'$in': [2 ,5]}})
         self.assertEqual(~User.followers.nin([2, 5]), {'followers': {'$in': [2 ,5]}})
@@ -78,8 +78,8 @@ class ExpressionTest(TestCase):
         self.assertEqual(~User.followers.exists(), {'followers': {'$exists': False}})
 
         # type
-        self.assertEqual(User.username.type(constants.STRING), {'username': {'$type': 2}})
-        self.assertEqual(~User.username.type(constants.STRING), {'username': {'$not': {'$type': 2}}})
+        self.assertEqual(User.username.type(enums.STRING), {'username': {'$type': 2}})
+        self.assertEqual(~User.username.type(enums.STRING), {'username': {'$not': {'$type': 2}}})
 
         # where
         self.assertEqual(User.username.where('this.username == "stan"'), {'username': {'$where': 'this.username == "stan"'}})
@@ -132,53 +132,6 @@ class ExpressionTest(TestCase):
         statement &= ((User.username != 'wamb') | (User.age == 5))
 
         self.assertEquals(statement, {'$or': [{'followers': 5}, {'followers': 9}, {'username': {'$ne': 'wamb'}}, {'age': 5}]})
-
-    def test_model(self):
-        user = User(username='stanislav', email='stanislav@guildwork.com', age=22)
-        user.followers.append(bson.objectid.ObjectId())
-        user.settings = Settings()
-        user.save()
-
-        self.assertEqual(type(user._id), bson.objectid.ObjectId)
-
-        user2 = User.objects.with_id(user._id)
-
-        self.assertEqual(user, user2)
-
-        user.username = 'wambulance'
-        user.save()
-
-        self.assertNotEqual(user.username, user2.username)
-
-        user2.reload()
-
-        self.assertEqual(user.username, user2.username)
-
-        User.objects.filter(User._id == user._id).update(User.username.set('stanislav'))
-
-        user.reload()
-
-        self.assertNotEqual(user.username, user2.username)
-
-        user2.reload()
-
-        self.assertEqual(user.username, user2.username)
-
-        self.assertEqual(user.age, 22)
-
-        User.objects.filter_by(_id=user._id).update(User.age - 1)
-
-        user = User.objects.find_one(User._id == user._id)
-
-        self.assertEqual(user.settings.sound, True)
-
-        self.assertEqual(user.age, 21)
-
-        self.assertEqual(User.objects.filter(User._id == user._id).count(), 1)
-
-        user.delete()
-
-        self.assertEqual(User.objects.filter(User._id == user._id).count(), 0)
 
     def test_update(self):
         self.assertEqual(User.followers + [2, 5] & User.followers + [2, 8], {'$pushAll': {'followers': [2, 5, 2, 8]}})

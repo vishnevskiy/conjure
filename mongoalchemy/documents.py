@@ -80,11 +80,9 @@ class DocumentMetaclass(type):
         return new_cls
 
 class BaseDocument(object):
-    # START - just so autocomplete works
-    objects = query.QuerySet(None, None)
+    objects = query.Query(None, None)
     _fields = {}
     _meta = {}
-    # END
 
     def __init__(self, **data):
         self._data = {}
@@ -140,17 +138,18 @@ class BaseDocument(object):
 
     @classmethod
     def to_python(cls, doc):
-        if '_cls' in doc:
-            if doc['_cls'] != cls.__name__:
-                pass # TODO: implement
+        if doc is not None:
+            if '_cls' in doc:
+                if doc['_cls'] != cls.__name__:
+                    pass # TODO: implement
 
-            del doc['_cls']
+                del doc['_cls']
 
-        for name, field in cls._fields.iteritems():
-            if name in doc:
-                doc[name] = field.to_python(doc[name])
+            for name, field in cls._fields.iteritems():
+                if name in doc:
+                    doc[name] = field.to_python(doc[name])
 
-        doc = cls(**doc)
+            doc = cls(**doc)
 
         return doc
 
