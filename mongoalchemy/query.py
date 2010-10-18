@@ -47,10 +47,10 @@ class Query(object):
         return self
 
     def find(self, *expressions):
-        return self.filter(*expressions).all()
+        return self.filter(*expressions).find(self._spec.compile(), fields=self._fields)
 
     def find_one(self, *expressions):
-        return self.filter(*expressions).one()
+        return self.filter(*expressions)._collection.find_one(self._spec.compile(), fields=self._fields)
 
     def filter(self, *expressions):
         for expression in expressions:

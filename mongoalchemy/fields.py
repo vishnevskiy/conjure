@@ -200,6 +200,29 @@ class ListField(operations.List, Field):
         self.field = field
         Field.__init__(self, default=default or [], **kwargs)
 
+    def __get__(self, instance, owner):
+        if instance is None:
+            return self
+
+        if isinstance(self.field, ReferenceField):
+            referenced_cls = self.field._document_cls
+
+            value_list = instance._data.get(self.name)
+
+            if value_list:
+                deref_list = []
+
+                for value in value_list:
+                    if not isinstance(value, referenced_cls):
+                        if value is not None:
+                            deref_list.append(referenced_cls.objects.filter_by(_id=value).one())
+                    else:
+                        deref_list.append(value)
+
+                instance._data[self.name] = deref_list
+
+        return Field.__get__(self, instance, owner)
+
     def to_python(self, value):
         return [self.field.to_python(item) for item in value]
 
@@ -242,3 +265,40 @@ class EmbeddedDocumentField(Field):
             raise exceptions.ValidationError('Invalid embedded document instance provided to an EmbeddedDocumentField')
 
         self.document.validate(value)
+
+class ReferenceField(Field, operations.Reference):
+    def __init__(self, document_cls, **kwargs):
+        if not (hasattr(document_cls, '_meta') and not document_cls._meta['embedded']):
+            raise exceptions.ValidationError('Argument to ReferenceField constructor must be a document class')
+
+        self._document_cls = document_cls
+        self._id_field = self._document_cls._fields['_id']
+
+        Field.__init__(self, **kwargs)
+
+    def __get__(self, instance, owner):
+        if instance is None:
+            return self
+
+        value = instance._data.get(self.name)
+
+        if not isinstance(value, self._document_cls):
+            if value is not None:
+                instance._data[self.name] = self._document_cls.objects.filter_by(_id=value).one()
+
+        return Field.__get__(self, instance, owner)
+
+    def to_mongo(self, document):
+        if isinstance(document, self._document_cls):
+            id_ = document._id
+
+            if id_ is None:
+                raise exceptions.ValidationError('You can only reference documents once they have been '
+                                                 'saved to the database')
+        else:
+            id_ = document
+
+        return self._id_field.to_mongo(id_)
+
+    def validate(self, value):
+        assert isinstance(value, (self._document_cls, self._id_field))

@@ -351,57 +351,53 @@ class QueryTest(unittest.TestCase):
         ages = [p.age for p in User.objects.sort('-name')]
         self.assertEqual(ages, [30, 40, 20])
 
-#    def test_query_value_conversion(self):
-#        """Ensure that query values are properly converted when necessary.
-#        """
-#        class BlogPost(Document):
-#            author = ReferenceField(self.User)
-#
-#        BlogPost.drop_collection()
-#
-#        person = self.User(name='test', age=30)
-#        person.save()
-#
-#        post = BlogPost(author=person)
-#        post.save()
-#
-#        # Test that query may be performed by providing a document as a value
-#        # while using a ReferenceField's name - the document should be
-#        # converted to an DBRef, which is legal, unlike a Document object
-#        post_obj = BlogPost.objects(author=person).first()
-#        self.assertEqual(post.id, post_obj.id)
-#
-#        # Test that lists of values work when using the 'in', 'nin' and 'all'
-#        post_obj = BlogPost.objects(author__in=[person]).first()
-#        self.assertEqual(post.id, post_obj.id)
-#
-#        BlogPost.drop_collection()
-#
-#    def test_update_value_conversion(self):
-#        """Ensure that values used in updates are converted before use.
-#        """
-#        class Group(Document):
-#            members = ListField(ReferenceField(self.User))
-#
-#        Group.drop_collection()
-#
-#        user1 = self.User(name='user1')
-#        user1.save()
-#        user2 = self.User(name='user2')
-#        user2.save()
-#
-#        group = Group()
-#        group.save()
-#
-#        Group.objects(id=group.id).update(set__members=[user1, user2])
-#        group.reload()
-#
-#        self.assertTrue(len(group.members) == 2)
-#        self.assertEqual(group.members[0].name, user1.name)
-#        self.assertEqual(group.members[1].name, user2.name)
-#
-#        Group.drop_collection()
-#
+    def test_query_value_conversion(self):
+        User = self.User
+        
+        class BlogPost(documents.Document):
+            author = fields.ReferenceField(User)
+
+        BlogPost.drop_collection()
+
+        user = User(name='test', age=30)
+        user.save()
+
+        post = BlogPost(author=user)
+        post.save()
+
+        post_obj = BlogPost.objects.filter(BlogPost.author == user).first()
+        self.assertEqual(post._id, post_obj._id)
+
+        post_obj = BlogPost.objects.filter(BlogPost.author.in_([user])).first()
+        self.assertEqual(post._id, post_obj._id)
+
+        BlogPost.drop_collection()
+
+    def test_update_value_conversion(self):
+        User = self.User
+
+        class Group(documents.Document):
+            members = fields.ListField(fields.ReferenceField(User))
+
+        Group.drop_collection()
+
+        user1 = User(name='user1')
+        user1.save()
+        user2 = User(name='user2')
+        user2.save()
+
+        group = Group()
+        group.save()
+
+        Group.objects.filter(Group._id == group._id).update(Group.members.set([user1, user2]))
+        group.reload()
+
+        self.assertTrue(len(group.members) == 2)
+        self.assertEqual(group.members[0].name, user1.name)
+        self.assertEqual(group.members[1].name, user2.name)
+
+        Group.drop_collection()
+
     def test_bulk(self):
         class BlogPost(documents.Document):
             title = fields.StringField()

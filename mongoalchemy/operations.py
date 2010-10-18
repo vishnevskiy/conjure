@@ -1,6 +1,7 @@
 from mongoalchemy import spec
 import types
 import re
+import documents
 
 class _Base(object):
     def get_key(self, *args, **kwargs):
@@ -66,7 +67,7 @@ class Common(_Base):
 
     def set(self, val):
         self._validate(val)
-        return spec.UpdateSpecification(['set', self.get_key(True), val])
+        return spec.UpdateSpecification(['set', self.get_key(True), self.to_mongo(val)])
 
     def unset(self):
         return spec.UpdateSpecification(['unset', self.get_key(True), 1])
@@ -192,3 +193,40 @@ class List(_Base):
             raise TypeError()
 
         return spec.UpdateSpecification(['pullAll', self.get_key(True), val])
+
+class Reference(Common):
+    def _convert(self, other):
+        if isinstance(other, documents.Document):
+            other = other._fields['_id'].to_mongo(other._id)
+
+        return other
+
+    def eq(self, other):
+        return Common.eq(self, self._convert(other))
+
+    def ne(self, other):
+        return Common.ne(self, self._convert(other))
+
+    def lt(self, other):
+        return Common.lt(self, self._convert(other))
+
+    def lte(self, other):
+        return Common.lte(self, self._convert(other))
+
+    def gt(self, other):
+        return Common.gt(self, self._convert(other))
+
+    def gte(self, other):
+        return Common.gte(self, self._convert(other))
+
+    def in_(self, vals):
+        vals = [self._convert(val) for val in vals]
+        return Common.in_(self, vals)
+
+    def nin(self, vals):
+        vals = [self._convert(val) for val in vals]
+        return Common.nin(self, vals)
+
+    def set(self, val):
+        self._validate(val)
+        return Common.set(self, self._convert(val))
