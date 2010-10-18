@@ -1,102 +1,16 @@
-from mongoalchemy import operations
+from mongoalchemy import operations, exceptions, base, documents
+from mongoalchemy.base import BaseField, ObjectIdField
 import re
-import exceptions
 import datetime
-import bson
 
-class Field(operations.Common):
-    def __init__(self, verbose_name=None, required=False, default=None, validators=None, choices=None):
-        self.owner = None
-        self.name = None
-        self.verbose_name = verbose_name
-        self.required = required
-        self.default = default
-        self.validators = validators or []
-        self.choices = choices or []
+ObjectIdField = ObjectIdField
 
-    def get_key(self, positional=False):
-        if isinstance(self.owner, Field):
-            return self.owner.get_key(positional)
-        elif  'parent_field' in self.owner._meta:
-            if positional:
-                sep = '.$.'
-            else:
-                sep = '.'
-
-            return self.owner._meta['parent_field'].get_key(positional) + sep + self.name
-
-        return self.name
-
-    def __get__(self, instance, _):
-        if instance is None:
-            return self
-
-        value = instance._data.get(self.name)
-
-        if value is None:
-            value = self.get_default()
-
-        return value
-
-    def __set__(self, instance, value):
-        instance._data[self.name] = value
-
-    def has_default(self):
-       return self.default is not None
-
-    def get_default(self):
-       if self.has_default():
-           if callable(self.default):
-               return self.default()
-
-           return self.default
-
-       return None
-
-    def to_python(self, value):
-        return value
-
-    def to_mongo(self, value):
-        return self.to_python(value)
-
-    def validate(self, value):
-        pass
-
-    def _validate(self, value):
-        if self.choices:
-            if value not in self.choices:
-                raise exceptions.ValidationError('Value must be one of %s.' % unicode(self.choices))
-
-        for validator in self.validators:
-            validator(value)
-            
-        self.validate(value)
-
-class ObjectIdField(Field):
-    def to_python(self, value):
-        return value
-
-    def to_mongo(self, value):
-        if not isinstance(value, bson.objectid.ObjectId):
-            try:
-                return bson.objectid.ObjectId(unicode(value))
-            except Exception, e:
-                raise exceptions.ValidationError(unicode(e))
-
-        return value
-
-    def validate(self, value):
-        try:
-            bson.objectid.ObjectId(unicode(value))
-        except bson.objectid.InvalidId:
-            raise exceptions.ValidationError('Invalid Object ID')
-
-class StringField(operations.String, Field):
+class StringField(operations.String, BaseField):
     def __init__(self, regex=None, min_length=None, max_length=None, **kwargs):
         self.regex = re.compile(regex) if regex else None
         self.min_length = min_length
         self.max_length = max_length
-        Field.__init__(self, **kwargs)
+        BaseField.__init__(self, **kwargs)
 
     def to_python(self, value):
         return unicode(value)
@@ -124,11 +38,11 @@ class EmailField(StringField):
         if not EmailField.EMAIL_REGEX.match(value):
             raise exceptions.ValidationError('Invalid Email: %s' % value)
 
-class IntegerField(operations.Number, Field):
+class IntegerField(operations.Number, BaseField):
     def __init__(self, min_value=None, max_value=None, **kwargs):
         self.min_value = min_value
         self.max_value = max_value
-        Field.__init__(self, **kwargs)
+        BaseField.__init__(self, **kwargs)
 
     def to_python(self, value):
         return int(value)
@@ -161,18 +75,18 @@ class FloatField(IntegerField):
         if self.max_value is not None and value > self.max_value:
             raise exceptions.ValidationError('Float value is too large')
 
-class BooleanField(Field):
+class BooleanField(BaseField):
     def to_python(self, value):
         return bool(value)
 
     def validate(self, value):
         assert isinstance(value, bool)
 
-class DateTimeField(Field):
+class DateTimeField(BaseField):
     def validate(self, value):
         assert isinstance(value, datetime.datetime)
 
-class DictField(Field):
+class DictField(BaseField):
     def validate(self, value):
         if not isinstance(value, dict):
             raise exceptions.ValidationError('Only dictionaries may be used in a DictField')
@@ -191,21 +105,21 @@ class DictField(Field):
 
         return Proxy(key, self)
 
-class ListField(operations.List, Field):
+class ListField(operations.List, BaseField):
     def __init__(self, field, default=None, **kwargs):
-        if not isinstance(field, Field):
+        if not isinstance(field, BaseField):
             raise exceptions.ValidationError('Argument to ListField constructor must be a valid field')
 
         field.owner = self
         self.field = field
-        Field.__init__(self, default=default or [], **kwargs)
+        BaseField.__init__(self, default=default or [], **kwargs)
 
     def __get__(self, instance, owner):
         if instance is None:
             return self
 
         if isinstance(self.field, ReferenceField):
-            referenced_cls = self.field._document_cls
+            referenced_cls = self.field.document_cls
 
             value_list = instance._data.get(self.name)
 
@@ -213,7 +127,7 @@ class ListField(operations.List, Field):
                 deref_list = []
 
                 for value in value_list:
-                    if not isinstance(value, referenced_cls):
+                    if not isinstance(value, documents.Document):
                         if value is not None:
                             deref_list.append(referenced_cls.objects.filter_by(_id=value).one())
                     else:
@@ -221,7 +135,7 @@ class ListField(operations.List, Field):
 
                 instance._data[self.name] = deref_list
 
-        return Field.__get__(self, instance, owner)
+        return BaseField.__get__(self, instance, owner)
 
     def to_python(self, value):
         return [self.field.to_python(item) for item in value]
@@ -238,7 +152,7 @@ class ListField(operations.List, Field):
         except Exception, err:
             raise exceptions.ValidationError('Invalid ListField item (%s)' % str(err))
 
-class EmbeddedDocumentField(Field):
+class EmbeddedDocumentField(BaseField):
     def __init__(self, document, **kwargs):
         if not (hasattr(document, '_meta') and document._meta['embedded']):
             raise exceptions.ValidationError('Invalid embedded document class provided to an EmbeddedDocumentField')
@@ -249,7 +163,7 @@ class EmbeddedDocumentField(Field):
         document._meta['parent_field'] = self
         self.document = document
 
-        Field.__init__(self, **kwargs)
+        BaseField.__init__(self, **kwargs)
 
     def to_python(self, value):
         if not isinstance(value, self.document):
@@ -266,15 +180,21 @@ class EmbeddedDocumentField(Field):
 
         self.document.validate(value)
 
-class ReferenceField(Field, operations.Reference):
+class ReferenceField(BaseField, operations.Reference):
     def __init__(self, document_cls, **kwargs):
-        if not (hasattr(document_cls, '_meta') and not document_cls._meta['embedded']):
+        if document_cls != 'self' and not (hasattr(document_cls, '_meta') and not document_cls._meta['embedded']):
             raise exceptions.ValidationError('Argument to ReferenceField constructor must be a document class')
 
         self._document_cls = document_cls
-        self._id_field = self._document_cls._fields['_id']
 
-        Field.__init__(self, **kwargs)
+        BaseField.__init__(self, **kwargs)
+
+    @property
+    def document_cls(self):
+        if self._document_cls == 'self':
+            self._document_cls = base._cls_index[self.owner._meta['cls_key']]
+
+        return self._document_cls
 
     def __get__(self, instance, owner):
         if instance is None:
@@ -282,14 +202,16 @@ class ReferenceField(Field, operations.Reference):
 
         value = instance._data.get(self.name)
 
-        if not isinstance(value, self._document_cls):
+        if not isinstance(value, documents.Document):
             if value is not None:
-                instance._data[self.name] = self._document_cls.objects.filter_by(_id=value).one()
+                instance._data[self.name] = self.document_cls.objects.filter_by(_id=value).one()
 
-        return Field.__get__(self, instance, owner)
+        return BaseField.__get__(self, instance, owner)
 
     def to_mongo(self, document):
-        if isinstance(document, self._document_cls):
+        field = self._document_cls._fields['_id']
+
+        if isinstance(document, documents.Document):
             id_ = document._id
 
             if id_ is None:
@@ -298,7 +220,8 @@ class ReferenceField(Field, operations.Reference):
         else:
             id_ = document
 
-        return self._id_field.to_mongo(id_)
+        return field.to_mongo(id_)
 
     def validate(self, value):
-        assert isinstance(value, (self._document_cls, self._id_field))
+        if isinstance(value, documents.Document):
+            assert isinstance(value, self.document_cls)

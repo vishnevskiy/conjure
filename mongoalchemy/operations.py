@@ -1,7 +1,6 @@
 from mongoalchemy import spec
 import types
 import re
-import documents
 
 class _Base(object):
     def get_key(self, *args, **kwargs):
@@ -196,10 +195,19 @@ class List(_Base):
 
 class Reference(Common):
     def _convert(self, other):
-        if isinstance(other, documents.Document):
+        if isinstance(other, self._get_document_cls()):
             other = other._fields['_id'].to_mongo(other._id)
 
         return other
+
+    def _get_document_cls(self):
+        # GHETTO FOR NOW!
+        
+        if not hasattr(Reference, '_document_cls'):
+            from mongoalchemy.documents import Document
+            Reference._document_cls = Document
+
+        return Reference._document_cls
 
     def eq(self, other):
         return Common.eq(self, self._convert(other))

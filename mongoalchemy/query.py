@@ -1,8 +1,6 @@
 from mongoalchemy.connection import connect
-import spec
-import exceptions
+from mongoalchemy import exceptions, spec
 import pymongo
-import fields
 
 class Manager(object):
     def __init__(self):
@@ -136,10 +134,10 @@ class Query(object):
         for expr in exprs:
             if isinstance(expr, basestring):
                 self._fields[expr] = 1
-            elif isinstance(expr, fields.Field):
-                self._fields[expr.name] = 1
             elif isinstance(expr, spec.Slice):
                 self._fields.update(expr.compile())
+            else:
+                self._fields[expr.name] = 1
                 
         return self
 

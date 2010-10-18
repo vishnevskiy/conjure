@@ -1,5 +1,5 @@
-import unittest
 from mongoalchemy import documents, fields, exceptions
+import unittest
 import datetime
 
 class FieldTest(unittest.TestCase):
@@ -209,217 +209,109 @@ class FieldTest(unittest.TestCase):
         post.author = User(name='Test User')
         post.author = PowerUser(name='Test User', power=47)
 
-#    def test_reference_validation(self):
-#        """Ensure that invalid docment objects cannot be assigned to reference
-#        fields.
-#        """
-#        class User(Document):
-#            name = StringField()
-#
-#        class BlogPost(Document):
-#            content = StringField()
-#            author = ReferenceField(User)
-#
-#        User.drop_collection()
-#        BlogPost.drop_collection()
-#
-#        self.assertRaises(ValidationError, ReferenceField, EmbeddedDocument)
-#
-#        user = User(name='Test User')
-#
-#        # Ensure that the referenced object must have been saved
-#        post1 = BlogPost(content='Chips and gravy taste good.')
-#        post1.author = user
-#        self.assertRaises(ValidationError, post1.save)
-#
-#        # Check that an invalid object type cannot be used
-#        post2 = BlogPost(content='Chips and chilli taste good.')
-#        post1.author = post2
-#        self.assertRaises(ValidationError, post1.validate)
-#
-#        user.save()
-#        post1.author = user
-#        post1.save()
-#
-#        post2.save()
-#        post1.author = post2
-#        self.assertRaises(ValidationError, post1.validate)
-#
-#        User.drop_collection()
-#        BlogPost.drop_collection()
-#
-#    def test_list_item_dereference(self):
-#        """Ensure that DBRef items in ListFields are dereferenced.
-#        """
-#        class User(Document):
-#            name = StringField()
-#
-#        class Group(Document):
-#            members = ListField(ReferenceField(User))
-#
-#        User.drop_collection()
-#        Group.drop_collection()
-#
-#        user1 = User(name='user1')
-#        user1.save()
-#        user2 = User(name='user2')
-#        user2.save()
-#
-#        group = Group(members=[user1, user2])
-#        group.save()
-#
-#        group_obj = Group.objects.first()
-#
-#        self.assertEqual(group_obj.members[0].name, user1.name)
-#        self.assertEqual(group_obj.members[1].name, user2.name)
-#
-#        User.drop_collection()
-#        Group.drop_collection()
-#
-#    def test_recursive_reference(self):
-#        """Ensure that ReferenceFields can reference their own documents.
-#        """
-#        class Employee(Document):
-#            name = StringField()
-#            boss = ReferenceField('self')
-#
-#        bill = Employee(name='Bill Lumbergh')
-#        bill.save()
-#        peter = Employee(name='Peter Gibbons', boss=bill)
-#        peter.save()
-#
-#        peter = Employee.objects.with_id(peter.id)
-#        self.assertEqual(peter.boss, bill)
-#
-#    def test_undefined_reference(self):
-#        """Ensure that ReferenceFields may reference undefined Documents.
-#        """
-#        class Product(Document):
-#            name = StringField()
-#            company = ReferenceField('Company')
-#
-#        class Company(Document):
-#            name = StringField()
-#
-#        ten_gen = Company(name='10gen')
-#        ten_gen.save()
-#        mongodb = Product(name='MongoDB', company=ten_gen)
-#        mongodb.save()
-#
-#        obj = Product.objects(company=ten_gen).first()
-#        self.assertEqual(obj, mongodb)
-#        self.assertEqual(obj.company, ten_gen)
-#
-#    def test_reference_query_conversion(self):
-#        """Ensure that ReferenceFields can be queried using objects and values
-#        of the type of the primary key of the referenced object.
-#        """
-#        class Member(Document):
-#            user_num = IntField(primary_key=True)
-#
-#        class BlogPost(Document):
-#            title = StringField()
-#            author = ReferenceField(Member)
-#
-#        Member.drop_collection()
-#        BlogPost.drop_collection()
-#
-#        m1 = Member(user_num=1)
-#        m1.save()
-#        m2 = Member(user_num=2)
-#        m2.save()
-#
-#        post1 = BlogPost(title='post 1', author=m1)
-#        post1.save()
-#
-#        post2 = BlogPost(title='post 2', author=m2)
-#        post2.save()
-#
-#        post = BlogPost.objects(author=m1).first()
-#        self.assertEqual(post.id, post1.id)
-#
-#        post = BlogPost.objects(author=m2).first()
-#        self.assertEqual(post.id, post2.id)
-#
-#        Member.drop_collection()
-#        BlogPost.drop_collection()
-#
-#    def test_generic_reference(self):
-#        """Ensure that a GenericReferenceField properly dereferences items.
-#        """
-#        class Link(Document):
-#            title = StringField()
-#            meta = {'allow_inheritance': False}
-#
-#        class Post(Document):
-#            title = StringField()
-#
-#        class Bookmark(Document):
-#            bookmark_object = GenericReferenceField()
-#
-#        Link.drop_collection()
-#        Post.drop_collection()
-#        Bookmark.drop_collection()
-#
-#        link_1 = Link(title="Pitchfork")
-#        link_1.save()
-#
-#        post_1 = Post(title="Behind the Scenes of the Pavement Reunion")
-#        post_1.save()
-#
-#        bm = Bookmark(bookmark_object=post_1)
-#        bm.save()
-#
-#        bm = Bookmark.objects(bookmark_object=post_1).first()
-#
-#        self.assertEqual(bm.bookmark_object, post_1)
-#        self.assertTrue(isinstance(bm.bookmark_object, Post))
-#
-#        bm.bookmark_object = link_1
-#        bm.save()
-#
-#        bm = Bookmark.objects(bookmark_object=link_1).first()
-#
-#        self.assertEqual(bm.bookmark_object, link_1)
-#        self.assertTrue(isinstance(bm.bookmark_object, Link))
-#
-#        Link.drop_collection()
-#        Post.drop_collection()
-#        Bookmark.drop_collection()
-#
-#    def test_generic_reference_list(self):
-#        """Ensure that a ListField properly dereferences generic references.
-#        """
-#        class Link(Document):
-#            title = StringField()
-#
-#        class Post(Document):
-#            title = StringField()
-#
-#        class User(Document):
-#            bookmarks = ListField(GenericReferenceField())
-#
-#        Link.drop_collection()
-#        Post.drop_collection()
-#        User.drop_collection()
-#
-#        link_1 = Link(title="Pitchfork")
-#        link_1.save()
-#
-#        post_1 = Post(title="Behind the Scenes of the Pavement Reunion")
-#        post_1.save()
-#
-#        user = User(bookmarks=[post_1, link_1])
-#        user.save()
-#
-#        user = User.objects(bookmarks__all=[post_1, link_1]).first()
-#
-#        self.assertEqual(user.bookmarks[0], post_1)
-#        self.assertEqual(user.bookmarks[1], link_1)
-#
-#        Link.drop_collection()
-#        Post.drop_collection()
-#        User.drop_collection()
+    def test_reference_validation(self):
+        class User(documents.Document):
+            name = fields.StringField()
+
+        class BlogPost(documents.Document):
+            content = fields.StringField()
+            author = fields.ReferenceField(User)
+
+        User.drop_collection()
+        BlogPost.drop_collection()
+
+        self.assertRaises(exceptions.ValidationError, fields.ReferenceField, documents.EmbeddedDocument)
+
+        user = User(name='Test User')
+
+        post1 = BlogPost(content='Chips and gravy taste good.')
+        post1.author = user
+#        self.assertRaises(exceptions.ValidationError, post1.save)
+
+        post2 = BlogPost(content='Chips and chilli taste good.')
+        post1.author = post2
+        self.assertRaises(exceptions.ValidationError, post1.validate)
+
+        user.save()
+        post1.author = user
+        post1.save()
+
+        post2.save()
+        post1.author = post2
+        self.assertRaises(exceptions.ValidationError, post1.validate)
+
+        User.drop_collection()
+        BlogPost.drop_collection()
+
+    def test_list_item_dereference(self):
+        class User(documents.Document):
+            name = fields.StringField()
+
+        class Group(documents.Document):
+            members = fields.ListField(fields.ReferenceField(User))
+
+        User.drop_collection()
+        Group.drop_collection()
+
+        user1 = User(name='user1')
+        user1.save()
+        user2 = User(name='user2')
+        user2.save()
+
+        group = Group(members=[user1, user2])
+        group.save()
+
+        group_obj = Group.objects.first()
+
+        self.assertEqual(group_obj.members[0].name, user1.name)
+        self.assertEqual(group_obj.members[1].name, user2.name)
+
+        User.drop_collection()
+        Group.drop_collection()
+
+    def test_recursive_reference(self):
+        class Employee(documents.Document):
+            name = fields.StringField()
+            boss = fields.ReferenceField('self')
+
+        bill = Employee(name='Bill Lumbergh')
+        bill.save()
+        peter = Employee(name='Peter Gibbons', boss=bill)
+        peter.save()
+
+        peter = Employee.objects.with_id(peter._id)
+        self.assertEqual(peter.boss, bill)
+
+    def test_reference_query_conversion(self):
+        class Member(documents.Document):
+            user_num = fields.IntegerField()
+
+        class BlogPost(documents.Document):
+            title = fields.StringField()
+            author = fields.ReferenceField(Member)
+
+        Member.drop_collection()
+        BlogPost.drop_collection()
+
+        m1 = Member(user_num=1)
+        m1.save()
+        m2 = Member(user_num=2)
+        m2.save()
+
+        post1 = BlogPost(title='post 1', author=m1)
+        post1.save()
+
+        post2 = BlogPost(title='post 2', author=m2)
+        post2.save()
+
+        post = BlogPost.objects.filter(BlogPost.author == m1).first()
+        self.assertEqual(post._id, post1._id)
+
+        post = BlogPost.objects.filter(BlogPost.author == m2).first()
+        self.assertEqual(post._id, post2._id)
+
+        Member.drop_collection()
+        BlogPost.drop_collection()
 
     def test_choices_validation(self):
         class Shirt(documents.Document):
