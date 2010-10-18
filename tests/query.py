@@ -9,7 +9,7 @@ class QueryTest(unittest.TestCase):
         class User(documents.Document):
             _id = fields.ObjectIdField()
             name = fields.StringField()
-            age = fields.IntegerField(required=False)
+            age = fields.IntegerField()
 
         self.User = User
 
@@ -121,8 +121,8 @@ class QueryTest(unittest.TestCase):
     def test_repeated_iteration(self):
         User = self.User
 
-        User(name='Person 1', age=20).save()
-        User(name='Person 2', age=22).save()
+        User(name='User 1', age=20).save()
+        User(name='User 2', age=22).save()
 
         q = self.User.objects
         users1 = [person for person in q]

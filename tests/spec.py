@@ -1,7 +1,6 @@
 from mongoalchemy import fields, documents, enums
-from unittest import TestCase
+import unittest
 import datetime
-import bson
 
 class Settings(documents.Document):
     sound = fields.BooleanField(default=True)
@@ -25,7 +24,7 @@ class User(documents.Document):
     class Meta:
         indexes = ['username', '-followers']
 
-class SpecTest(TestCase):
+class SpecTest(unittest.TestCase):
     def test_basic(self):
         # eq
         self.assertEqual(User.username == 'stanislav', {'username': 'stanislav'})
@@ -146,3 +145,6 @@ class SpecTest(TestCase):
         update &= User.following.push(10)
 
         self.assertEqual(update, {'$set': {'username': 'stanislav'}, '$push': {'following': 10, 'followers': 5}, '$pop': {'following': 1}})
+
+if __name__ == '__main__':
+    unittest.main()

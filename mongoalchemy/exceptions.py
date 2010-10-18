@@ -1,14 +1,14 @@
 class DocumentError(Exception):
     pass
 
-class ConnectionError(Exception):
+class ConnectionError(DocumentError):
     pass
 
-class ValidationError(Exception):
+class ValidationError(DocumentError):
     pass
 
-class OperationError(Exception):
+class OperationError(DocumentError):
     pass
 
-class DoesNotExist(Exception):
+class DoesNotExist(DocumentError):
     pass

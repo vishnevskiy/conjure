@@ -5,7 +5,7 @@ import datetime
 import bson
 
 class Field(operations.Common):
-    def __init__(self, verbose_name=None, required=True, default=None, validators=None, choices=None):
+    def __init__(self, verbose_name=None, required=False, default=None, validators=None, choices=None):
         self.owner = None
         self.name = None
         self.verbose_name = verbose_name
