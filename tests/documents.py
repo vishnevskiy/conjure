@@ -2,7 +2,7 @@ import unittest
 import datetime
 from mongoalchemy.documents import Document, EmbeddedDocument
 from mongoalchemy.fields import StringField, IntegerField, ReferenceField, DateTimeField, EmailField, ListField, EmbeddedDocumentField
-from mongoalchemy.exceptions import ValidationError
+from mongoalchemy.exceptions import ValidationError, OperationError
 from mongoalchemy.utils import Alias
 import bson
 
@@ -171,6 +171,29 @@ class DocumentTest(unittest.TestCase):
         self.assertTrue('username' not in user_son['_id'])
 
         User.drop_collection()
+
+    def test_db_field(self):
+        class Date(EmbeddedDocument):
+            year = IntegerField(db_field='yr')
+
+        class BlogPost(Document):
+            title = StringField()
+            author = ReferenceField(self.User, db_field='user_id')
+            date = EmbeddedDocumentField(Date)
+            slug = StringField()
+
+        BlogPost.drop_collection()
+
+        author = self.User(username='stanislav')
+        author.save()
+
+        post1 = BlogPost(title='test1', date=Date(year=2009), slug='test', author=author)
+        post1.save()
+
+        self.assertEqual(BlogPost.objects.filter(Date.year == 2009).first().date.year, 2009)
+        self.assertEqual(BlogPost.objects.filter(Date.year == 2009).first().author, author)
+
+        BlogPost.drop_collection()
 
     def test_creation(self):
         user = self.User(name="Test User", age=30)

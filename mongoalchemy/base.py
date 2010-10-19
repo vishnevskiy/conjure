@@ -1,6 +1,7 @@
-from mongoalchemy.operations import Common
-from mongoalchemy.exceptions import ValidationError
-from mongoalchemy.query import Manager
+from .operations import Common
+from .exceptions import ValidationError
+from .query import Manager
+from operator import itemgetter
 import copy
 import bson
 
@@ -50,13 +51,17 @@ class DocumentMeta(type):
         for attr_name, attr_value in attrs.iteritems():
             if hasattr(attr_value, '__class__') and issubclass(attr_value.__class__, BaseField):
                 attr_value.name = attr_name
+
+                if not attr_value.db_field:
+                    attr_value.db_field = attr_name
+                    
                 _fields[attr_name] = attr_value
 
         if _meta['embedded']:
             _meta = dict([(k, _meta[k]) for k in ['embedded', 'verbose_name', 'verbose_name_plural']])
         else:
             if '_id' not in _fields:
-                _id = ObjectIdField()
+                _id = ObjectIdField(db_field='_id')
                 _id.name = '_id'
                 _fields['_id'] = _id
                 attrs['_id'] = _id
@@ -67,7 +72,7 @@ class DocumentMeta(type):
         attrs['_superclasses'] = _superclasses
         attrs['_meta'] = _meta
         attrs['_fields'] = _fields
-        
+
         new_cls = super_new(cls, name, bases, attrs)
 
         for field in new_cls._fields.values():
@@ -153,6 +158,8 @@ class BaseDocument(object):
     @classmethod
     def to_python(cls, doc):
         if doc is not None:
+            python_doc = {}
+
             if '_cls' in doc:
                 cls_name = doc['_cls']
 
@@ -164,13 +171,11 @@ class BaseDocument(object):
 
                     cls = subclasses[cls_name]
 
-                del doc['_cls']
-
             for name, field in cls._fields.iteritems():
-                if name in doc:
-                    doc[name] = field.to_python(doc[name])
+                if field.db_field in doc:
+                    python_doc[field.name] = field.to_python(doc[field.db_field])
 
-            doc = cls(**doc)
+            doc = cls(**python_doc)
 
         return doc
 
@@ -181,7 +186,7 @@ class BaseDocument(object):
             value = getattr(self, field_name, None)
 
             if value is not None:
-                doc[field.name] = field.to_mongo(value)
+                doc[field.db_field] = field.to_mongo(value)
 
         if not self._meta['embedded']:
             doc['_cls'] = self._name
@@ -212,10 +217,11 @@ class BaseDocument(object):
 
 
 class BaseField(Common):
-    def __init__(self, verbose_name=None, required=False, default=None, validators=None, choices=None):
+    def __init__(self, verbose_name=None, db_field=None, required=False, default=None, validators=None, choices=None):
         self.owner = None
         self.name = None
         self.verbose_name = verbose_name
+        self.db_field = db_field
         self.required = required
         self.default = default
         self.validators = validators or []
@@ -230,9 +236,9 @@ class BaseField(Common):
             else:
                 sep = '.'
 
-            return self.owner._meta['parent_field'].get_key(positional) + sep + self.name
+            return self.owner._meta['parent_field'].get_key(positional) + sep + self.db_field
 
-        return self.name
+        return self.db_field
 
     def __get__(self, instance, _):
         if instance is None:
@@ -271,7 +277,7 @@ class BaseField(Common):
 
     def _validate(self, value):
         if self.choices:
-            if value not in self.choices:
+            if value not in map(itemgetter(0), self.choices):
                 raise ValidationError('Value must be one of %s.' % unicode(self.choices))
 
         for validator in self.validators:
@@ -281,6 +287,9 @@ class BaseField(Common):
 
     def add_to_document(self, cls):
         pass
+
+    def lookup_member(self, name):
+        return None
 
 class ObjectIdField(BaseField):
     def to_python(self, value):

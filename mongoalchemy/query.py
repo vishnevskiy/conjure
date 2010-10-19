@@ -1,8 +1,9 @@
-from mongoalchemy.connection import connect
-from mongoalchemy.spec import QuerySpecification, Slice
-from mongoalchemy.exceptions import DoesNotExist, OperationError
+from .connection import connect
+from .spec import QuerySpecification, Slice
+from .exceptions import DoesNotExist, OperationError
+from .eagerload import Eagerload
+from .utils import lookup_field
 import pymongo
-from mongoalchemy.eagerload import Eagerload
 
 class Manager(object):
     def __init__(self):
@@ -31,14 +32,17 @@ class Query(object):
         transformed_keys = []
 
         for key in keys.split():
-           direction = pymongo.ASCENDING
+            direction = pymongo.ASCENDING
 
-           if key[0] == '-':
-               direction = pymongo.DESCENDING
-           if key[0] in ('-', '+'):
-               key = key[1:]
+            if key[0] == '-':
+                direction = pymongo.DESCENDING
 
-           transformed_keys.append((key, direction))
+            if key[0] in ('-', '+'):
+                key = key[1:]
+
+            field = lookup_field(self._document_cls, key)
+
+            transformed_keys.append((field.get_key(False), direction))
 
         return transformed_keys
 
@@ -158,11 +162,12 @@ class Query(object):
 
         for expr in exprs:
             if isinstance(expr, basestring):
-                self._fields[expr] = 1
+                field = lookup_field(self._document_cls, expr)
+                self._fields[field.get_key(False)] = 1
             elif isinstance(expr, Slice):
                 self._fields.update(expr.compile())
             else:
-                self._fields[expr.name] = 1
+                self._fields[expr.get_key(False)] = 1
                 
         return self
 

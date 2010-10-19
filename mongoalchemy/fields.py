@@ -1,7 +1,7 @@
-from mongoalchemy.base import BaseField, ObjectIdField
-from mongoalchemy.operations import String, Number, Common, List, Reference
-from mongoalchemy.exceptions import ValidationError
-from mongoalchemy.documents import Document
+from .base import BaseField, ObjectIdField
+from .operations import String, Number, Common, List, Reference
+from .exceptions import ValidationError
+from .documents import Document
 import re
 import datetime
 
@@ -173,6 +173,9 @@ class ListField(List, BaseField):
 
         setattr(cls, name + '_', property(proxy))
 
+    def lookup_member(self, name):
+        return self.field.lookup_member(name)
+
 class EmbeddedDocumentField(BaseField):
     def __init__(self, document, **kwargs):
         if not (hasattr(document, '_meta') and document._meta['embedded']):
@@ -200,6 +203,9 @@ class EmbeddedDocumentField(BaseField):
             raise ValidationError('Invalid embedded document instance provided to an EmbeddedDocumentField')
 
         self.document.validate(value)
+
+    def lookup_member(self, name):
+        return self.document._fields.get(name)
 
 class ReferenceField(BaseField, Reference):
     def __init__(self, document_cls, **kwargs):
@@ -259,4 +265,6 @@ class ReferenceField(BaseField, Reference):
 
         setattr(cls, name + '_id', property(proxy))
 
+    def lookup_member(self, name):
+        return self.document_cls._fields.get(name)
 

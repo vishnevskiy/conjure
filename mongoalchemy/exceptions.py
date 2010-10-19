@@ -12,3 +12,6 @@ class OperationError(DocumentError):
 
 class DoesNotExist(DocumentError):
     pass
+
+class InvalidQueryError(Exception):
+    pass

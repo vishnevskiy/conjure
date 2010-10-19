@@ -1,6 +1,6 @@
-from mongoalchemy.base import BaseDocument, DocumentMeta, ObjectIdField
-from mongoalchemy.exceptions import OperationError
-from mongoalchemy.query import Query
+from .base import BaseDocument, DocumentMeta, ObjectIdField
+from .exceptions import OperationError
+from .query import Query
 import pymongo
 
 class Document(BaseDocument):

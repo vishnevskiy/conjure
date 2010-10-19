@@ -1,4 +1,4 @@
-from mongoalchemy.spec import Equal, NotEqual, LessThan, LessThanEqual, GreaterThan, GreaterThanEqual, In, NotIn, \
+from .spec import Equal, NotEqual, LessThan, LessThanEqual, GreaterThan, GreaterThanEqual, In, NotIn, \
     Exists, Type, Where, UpdateSpecification, Mod, All, Size, Slice, Slice, QuerySpecification
 import types
 import re

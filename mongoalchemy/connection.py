@@ -1,4 +1,4 @@
-from mongoalchemy.exceptions import ConnectionError
+from .exceptions import ConnectionError
 from pymongo.connection import Connection, _parse_uri
 
 _connections = {}
