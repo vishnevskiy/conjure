@@ -1,13 +1,13 @@
-from mongoalchemy import query, base
-import exceptions
+from mongoalchemy.base import BaseDocument, DocumentMeta, ObjectIdField
+from mongoalchemy.exceptions import OperationError
+from mongoalchemy.query import Query
 import pymongo
-from mongoalchemy.base import BaseDocument, DocumentMeta
 
 class Document(BaseDocument):
     __metaclass__ = DocumentMeta
 
-    _id = base.ObjectIdField()
-    objects = query.Query(None, None)
+    _id = ObjectIdField()
+    objects = Query(None, None)
 
     def save(self, safe=True, insert=False):
         self.validate()
@@ -22,7 +22,7 @@ class Document(BaseDocument):
             else:
                 object_id = collection.save(doc, safe=safe)
         except pymongo.errors.OperationFailure, err:
-            raise exceptions.OperationError(unicode(err))
+            raise OperationError(unicode(err))
 
         self['_id'] = object_id
 
@@ -32,7 +32,7 @@ class Document(BaseDocument):
         try:
             self.__class__.objects.filter_by(_id=object_id).delete(safe=safe)
         except pymongo.errors.OperationFailure, err:
-            raise exceptions.OperationError(unicode(err))
+            raise OperationError(unicode(err))
 
     def reload(self):
         doc = self.__class__.objects.filter_by(_id=self._id)._one()

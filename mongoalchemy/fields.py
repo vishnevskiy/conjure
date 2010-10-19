@@ -1,11 +1,13 @@
-from mongoalchemy import operations, exceptions, base, documents
 from mongoalchemy.base import BaseField, ObjectIdField
+from mongoalchemy.operations import String, Number, Common, List, Reference
+from mongoalchemy.exceptions import ValidationError
+from mongoalchemy.documents import Document
 import re
 import datetime
 
 ObjectIdField = ObjectIdField
 
-class StringField(operations.String, BaseField):
+class StringField(String, BaseField):
     def __init__(self, regex=None, min_length=None, max_length=None, **kwargs):
         self.regex = re.compile(regex) if regex else None
         self.min_length = min_length
@@ -19,13 +21,13 @@ class StringField(operations.String, BaseField):
         assert isinstance(value, (str, unicode))
 
         if self.max_length is not None and len(value) > self.max_length:
-            raise exceptions.ValidationError('String value is too long')
+            raise ValidationError('String value is too long')
 
         if self.min_length is not None and len(value) < self.min_length:
-            raise exceptions.ValidationError('String value is too short')
+            raise ValidationError('String value is too short')
 
         if self.regex is not None and self.regex.match(value) is None:
-            raise exceptions.ValidationError('String value did not match validation regex')
+            raise ValidationError('String value did not match validation regex')
 
 class EmailField(StringField):
     EMAIL_REGEX = re.compile(
@@ -36,9 +38,9 @@ class EmailField(StringField):
 
     def validate(self, value):
         if not EmailField.EMAIL_REGEX.match(value):
-            raise exceptions.ValidationError('Invalid Email: %s' % value)
+            raise ValidationError('Invalid Email: %s' % value)
 
-class IntegerField(operations.Number, BaseField):
+class IntegerField(Number, BaseField):
     def __init__(self, min_value=None, max_value=None, **kwargs):
         self.min_value = min_value
         self.max_value = max_value
@@ -51,13 +53,13 @@ class IntegerField(operations.Number, BaseField):
         try:
             value = int(value)
         except:
-            raise exceptions.ValidationError('%s could not be converted to int' % value)
+            raise ValidationError('%s could not be converted to int' % value)
 
         if self.min_value is not None and value < self.min_value:
-            raise exceptions.ValidationError('Integer value is too small')
+            raise ValidationError('Integer value is too small')
 
         if self.max_value is not None and value > self.max_value:
-            raise exceptions.ValidationError('Integer value is too large')
+            raise ValidationError('Integer value is too large')
 
 class FloatField(IntegerField):
     def to_python(self, value):
@@ -70,10 +72,10 @@ class FloatField(IntegerField):
         assert isinstance(value, float)
 
         if self.min_value is not None and value < self.min_value:
-            raise exceptions.ValidationError('Float value is too small')
+            raise ValidationError('Float value is too small')
 
         if self.max_value is not None and value > self.max_value:
-            raise exceptions.ValidationError('Float value is too large')
+            raise ValidationError('Float value is too large')
 
 class BooleanField(BaseField):
     def to_python(self, value):
@@ -89,13 +91,13 @@ class DateTimeField(BaseField):
 class DictField(BaseField):
     def validate(self, value):
         if not isinstance(value, dict):
-            raise exceptions.ValidationError('Only dictionaries may be used in a DictField')
+            raise ValidationError('Only dictionaries may be used in a DictField')
 
         if any(('.' in k or '$' in k) for k in value):
-            raise exceptions.ValidationError('Invalid dictionary key name - keys may not contain "." or "$" characters')
+            raise ValidationError('Invalid dictionary key name - keys may not contain "." or "$" characters')
 
     def __getitem__(self, key):
-        class Proxy(operations.Common):
+        class Proxy(Common):
             def __init__(self, key, field):
                 self.key = key
                 self.field = field
@@ -105,10 +107,10 @@ class DictField(BaseField):
 
         return Proxy(key, self)
 
-class ListField(operations.List, BaseField):
+class ListField(List, BaseField):
     def __init__(self, field, default=None, **kwargs):
         if not isinstance(field, BaseField):
-            raise exceptions.ValidationError('Argument to ListField constructor must be a valid field')
+            raise ValidationError('Argument to ListField constructor must be a valid field')
 
         field.owner = self
         self.field = field
@@ -127,7 +129,7 @@ class ListField(operations.List, BaseField):
                 deref_list = []
 
                 for value in value_list:
-                    if not isinstance(value, documents.Document):
+                    if not isinstance(value, Document):
                         if value is not None:
                             deref_list.append(referenced_cls.objects.filter_by(_id=value).one())
                     else:
@@ -145,20 +147,20 @@ class ListField(operations.List, BaseField):
 
     def validate(self, value):
         if not isinstance(value, (list, tuple)):
-            raise exceptions.ValidationError('Only lists and tuples may be used in a list field')
+            raise ValidationError('Only lists and tuples may be used in a list field')
 
         try:
             [self.field.validate(item) for item in value]
         except Exception, err:
-            raise exceptions.ValidationError('Invalid ListField item (%s)' % str(err))
+            raise ValidationError('Invalid ListField item (%s)' % str(err))
 
 class EmbeddedDocumentField(BaseField):
     def __init__(self, document, **kwargs):
         if not (hasattr(document, '_meta') and document._meta['embedded']):
-            raise exceptions.ValidationError('Invalid embedded document class provided to an EmbeddedDocumentField')
+            raise ValidationError('Invalid embedded document class provided to an EmbeddedDocumentField')
 
         if 'parent_field' in document._meta:
-            raise exceptions.ValidationError('This document is already embedded')
+            raise ValidationError('This document is already embedded')
 
         document._meta['parent_field'] = self
         self.document = document
@@ -176,14 +178,14 @@ class EmbeddedDocumentField(BaseField):
 
     def validate(self, value):
         if not isinstance(value, self.document):
-            raise exceptions.ValidationError('Invalid embedded document instance provided to an EmbeddedDocumentField')
+            raise ValidationError('Invalid embedded document instance provided to an EmbeddedDocumentField')
 
         self.document.validate(value)
 
-class ReferenceField(BaseField, operations.Reference):
+class ReferenceField(BaseField, Reference):
     def __init__(self, document_cls, **kwargs):
         if document_cls != 'self' and not (hasattr(document_cls, '_meta') and not document_cls._meta['embedded']):
-            raise exceptions.ValidationError('Argument to ReferenceField constructor must be a document class')
+            raise ValidationError('Argument to ReferenceField constructor must be a document class')
 
         self._document_cls = document_cls
 
@@ -192,7 +194,7 @@ class ReferenceField(BaseField, operations.Reference):
     @property
     def document_cls(self):
         if self._document_cls == 'self':
-            self._document_cls = base._cls_index[self.owner._meta['cls_key']]
+            self._document_cls = self.owner
 
         return self._document_cls
 
@@ -202,7 +204,7 @@ class ReferenceField(BaseField, operations.Reference):
 
         value = instance._data.get(self.name)
 
-        if not isinstance(value, documents.Document):
+        if not isinstance(value, Document):
             if value is not None:
                 instance._data[self.name] = self.document_cls.objects.filter_by(_id=value).one()
 
@@ -211,17 +213,16 @@ class ReferenceField(BaseField, operations.Reference):
     def to_mongo(self, document):
         field = self._document_cls._fields['_id']
 
-        if isinstance(document, documents.Document):
+        if isinstance(document, Document):
             id_ = document._id
 
             if id_ is None:
-                raise exceptions.ValidationError('You can only reference documents once they have been '
-                                                 'saved to the database')
+                raise ValidationError('You can only reference documents once they have been saved to the database')
         else:
             id_ = document
 
         return field.to_mongo(id_)
 
     def validate(self, value):
-        if isinstance(value, documents.Document):
+        if isinstance(value, Document):
             assert isinstance(value, self.document_cls)

@@ -58,6 +58,7 @@ class FieldTest(unittest.TestCase):
         user = User(name='Name that is more than twenty characters')
         self.assertRaises(exceptions.ValidationError, user.validate)
 
+        user._id = '1'
         user.name = 'Shorter name'
         user.validate()
 

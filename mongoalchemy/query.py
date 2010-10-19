@@ -1,5 +1,6 @@
 from mongoalchemy.connection import connect
-from mongoalchemy import exceptions, spec
+from mongoalchemy.spec import QuerySpecification
+from mongoalchemy.exceptions import DoesNotExist, OperationError
 import pymongo
 
 class Manager(object):
@@ -20,7 +21,7 @@ class Query(object):
     def __init__(self, document_cls, collection):
         self._document_cls = document_cls
         self._collection = collection
-        self._spec = spec.QuerySpecification(None)
+        self._spec = QuerySpecification(None)
         self._pymongo_cursor = None
         self._fields = None
 
@@ -45,9 +46,15 @@ class Query(object):
         return self
 
     def find(self, *expressions):
+        if len(expressions) == 1 and isinstance(expressions[0], dict):
+            return self._collection.find(expressions[0], fields=self._fields)
+
         return self.filter(*expressions).find(self._spec.compile(), fields=self._fields)
 
     def find_one(self, *expressions):
+        if len(expressions) == 1 and isinstance(expressions[0], dict):
+            return self._collection.find_one(expressions[0], fields=self._fields)
+
         return self.filter(*expressions)._collection.find_one(self._spec.compile(), fields=self._fields)
 
     def filter(self, *expressions):
@@ -84,7 +91,7 @@ class Query(object):
         try:
             return self.filter(*expressions)[0]
         except IndexError:
-            raise exceptions.DoesNotExist()
+            raise DoesNotExist()
 
     def all(self):
         return list(self)
@@ -98,7 +105,12 @@ class Query(object):
 
     def next(self):
         try:
-            return self._document_cls.to_python(self._cursor.next())
+            obj = self._document_cls.to_python(self._cursor.next())
+
+            if not obj:
+                return self.next()
+
+            return obj
         except StopIteration, e:
             self.rewind()
             raise e
@@ -161,7 +173,7 @@ class Query(object):
        try:
            self._collection.update(self._spec.compile(), update, safe=safe, upsert=upsert, multi=multi)
        except pymongo.errors.OperationFailure, err:
-           raise exceptions.OperationError(unicode(err))
+           raise OperationError(unicode(err))
 
     def update(self, update_spec, safe=False):
         self._update(update_spec.compile(), safe, False, True)

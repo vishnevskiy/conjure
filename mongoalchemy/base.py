@@ -1,8 +1,8 @@
-from mongoalchemy import query, exceptions, operations
+from mongoalchemy.operations import Common
+from mongoalchemy.exceptions import ValidationError
+from mongoalchemy.query import Manager
 import copy
 import bson
-
-_cls_index = {}
 
 class DocumentMeta(type):
     def __new__(cls, name, bases, attrs):
@@ -13,14 +13,14 @@ class DocumentMeta(type):
             return super_new(cls, name, bases, attrs)
 
         _fields = {}
+        _name = [name]
+        _superclasses = {}
 
         _meta = {
             'db': 'mongodb://localhost:27017/main',
             'verbose_name': name.lower(),
             'verbose_name_plural': name.lower() + 's',
             'collection': name.lower() + 's',
-            'sorting': [],
-            'get_latest_by': [],
             'indexes': [],
             'embedded': False
         }
@@ -28,6 +28,11 @@ class DocumentMeta(type):
         for base in bases:
             if hasattr(base, '_fields'):
                 _fields.update(copy.deepcopy(base._fields))
+
+            if hasattr(base, '_name') and hasattr(base, '_superclasses'):
+                _name.append(base._name)
+                _superclasses[base._name] = base
+                _superclasses.update(base._superclasses)
 
             if hasattr(base, '_meta'):
                 _meta.update(copy.deepcopy(base._meta))
@@ -49,32 +54,33 @@ class DocumentMeta(type):
 
         if _meta['embedded']:
             _meta = dict([(k, _meta[k]) for k in ['embedded', 'verbose_name', 'verbose_name_plural']])
-        elif '_id' not in _fields:
-            _id = ObjectIdField()
-            _id.name = '_id'
-            _fields['_id'] = _id
-            attrs['_id'] = _id
+        else:
+            if '_id' not in _fields:
+                _id = ObjectIdField()
+                _id.name = '_id'
+                _fields['_id'] = _id
+                attrs['_id'] = _id
+            elif not isinstance(_fields['_id'], ObjectIdField):
+                _fields['_id'].required = True
 
+        attrs['_name'] = '.'.join(reversed(_name))
+        attrs['_superclasses'] = _superclasses
         attrs['_meta'] = _meta
         attrs['_fields'] = _fields
-
+        
         new_cls = super_new(cls, name, bases, attrs)
 
         for field in new_cls._fields.values():
             field.owner = new_cls
 
         if not _meta['embedded']:
-            new_cls.objects = query.Manager()
-            _meta['cls_key'] = '%s/%s:%s' % (_meta['db'], _meta['collection'], name)
-
-            global _cls_index
-            _cls_index[_meta['cls_key']] = new_cls
+            new_cls.objects = Manager()
 
         return new_cls
 
 class BaseDocument(object):
-    _fields = {}
-    _meta = {}
+#    _fields = {}
+#    _meta = {}
 
     def __init__(self, **data):
         self._data = {}
@@ -85,6 +91,21 @@ class BaseDocument(object):
             else:
                 value = getattr(self, attr_name, None)
                 setattr(self, attr_name, value)
+
+    @classmethod
+    def _get_subclasses(cls):
+        try:
+            subclasses = cls.__subclasses__()
+        except:
+            subclasses = cls.__subclasses__(cls)
+
+        all_subclasses = {}
+
+        for subclass in subclasses:
+            all_subclasses[subclass._name] = subclass
+            all_subclasses.update(subclass._get_subclasses())
+
+        return all_subclasses
 
     def __iter__(self):
         return iter(self._fields)
@@ -132,8 +153,15 @@ class BaseDocument(object):
     def to_python(cls, doc):
         if doc is not None:
             if '_cls' in doc:
-                if doc['_cls'] != cls.__name__:
-                    pass # TODO: implement
+                cls_name = doc['_cls']
+
+                if cls_name != cls._name:
+                    subclasses = cls._get_subclasses()
+
+                    if cls_name not in subclasses:
+                        return None
+
+                    cls = subclasses[cls_name]
 
                 del doc['_cls']
 
@@ -155,7 +183,7 @@ class BaseDocument(object):
                 doc[field.name] = field.to_mongo(value)
 
         if not self._meta['embedded']:
-            doc['_cls'] = self.__class__.__name__
+            doc['_cls'] = self._name
 
         return doc
 
@@ -167,10 +195,10 @@ class BaseDocument(object):
                 try:
                     field._validate(value)
                 except (ValueError, AttributeError, AssertionError):
-                    raise exceptions.ValidationError('Invalid value for field of type "' +
+                    raise ValidationError('Invalid value for field of type "' +
                                                      field.__class__.__name__ + '"')
-            elif not field.name == '_id' and field.required:
-                raise exceptions.ValidationError('Field "%s" is required' % field.name)
+            elif not (isinstance(field, ObjectIdField) and field.name == '_id') and field.required:
+                raise ValidationError('Field "%s" is required' % field.name)
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
@@ -182,7 +210,7 @@ class BaseDocument(object):
         return False
 
 
-class BaseField(operations.Common):
+class BaseField(Common):
     def __init__(self, verbose_name=None, required=False, default=None, validators=None, choices=None):
         self.owner = None
         self.name = None
@@ -243,7 +271,7 @@ class BaseField(operations.Common):
     def _validate(self, value):
         if self.choices:
             if value not in self.choices:
-                raise exceptions.ValidationError('Value must be one of %s.' % unicode(self.choices))
+                raise ValidationError('Value must be one of %s.' % unicode(self.choices))
 
         for validator in self.validators:
             validator(value)
@@ -259,7 +287,7 @@ class ObjectIdField(BaseField):
             try:
                 return bson.objectid.ObjectId(unicode(value))
             except Exception, e:
-                raise exceptions.ValidationError(unicode(e))
+                raise ValidationError(unicode(e))
 
         return value
 
@@ -267,4 +295,4 @@ class ObjectIdField(BaseField):
         try:
             bson.objectid.ObjectId(unicode(value))
         except bson.objectid.InvalidId:
-            raise exceptions.ValidationError('Invalid Object ID')
+            raise ValidationError('Invalid Object ID')
