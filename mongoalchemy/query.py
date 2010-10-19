@@ -1,7 +1,8 @@
 from mongoalchemy.connection import connect
-from mongoalchemy.spec import QuerySpecification
+from mongoalchemy.spec import QuerySpecification, Slice
 from mongoalchemy.exceptions import DoesNotExist, OperationError
 import pymongo
+from mongoalchemy.eagerload import Eagerload
 
 class Manager(object):
     def __init__(self):
@@ -24,6 +25,7 @@ class Query(object):
         self._spec = QuerySpecification(None)
         self._pymongo_cursor = None
         self._fields = None
+        self._eagerloads = []
 
     def _transform_key_list(self, keys):
         transformed_keys = []
@@ -39,6 +41,17 @@ class Query(object):
            transformed_keys.append((key, direction))
 
         return transformed_keys
+
+    def eagerload(self, field, fields=None):
+        self._eagerloads.append(Eagerload(field, fields))
+        return self
+
+    def _eagerload(self, obj):
+        for eagerload in self._eagerloads:
+            eagerload.add_documents(obj)
+            eagerload.flush()
+
+        return obj
 
     def ensure_index(self, key_or_list):
         indexes = self._transform_key_list(key_or_list)
@@ -82,7 +95,7 @@ class Query(object):
         return self
 
     def one(self):
-        return self._document_cls.to_python(self._one())
+        return self._eagerload(self._document_cls.to_python(self._one()))
 
     def _one(self):
         return self._collection.find_one(self._spec.compile(), fields=self._fields)
@@ -138,7 +151,7 @@ class Query(object):
             self._pymongo_cursor = self._cursor[key]
             return self
         elif isinstance(key, int):
-            return self._document_cls.to_python(self._cursor[key])
+            return self._eagerload(self._document_cls.to_python(self._cursor[key]))
 
     def only(self, *exprs):
         self._fields = {'_cls': 1}
@@ -146,7 +159,7 @@ class Query(object):
         for expr in exprs:
             if isinstance(expr, basestring):
                 self._fields[expr] = 1
-            elif isinstance(expr, spec.Slice):
+            elif isinstance(expr, Slice):
                 self._fields.update(expr.compile())
             else:
                 self._fields[expr.name] = 1
@@ -185,6 +198,9 @@ class Query(object):
         self._update(update_spec.compile(), safe, True, False)
 
     def __iter__(self):
+        if self._eagerloads:
+            return self._eagerload(map(self._document_cls.to_python, self._cursor)).__iter__()
+
         return self
 
     @property
