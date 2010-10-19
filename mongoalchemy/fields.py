@@ -154,6 +154,25 @@ class ListField(List, BaseField):
         except Exception, err:
             raise ValidationError('Invalid ListField item (%s)' % str(err))
 
+    def add_to_document(self, cls):
+        if not isinstance(self.field, ReferenceField): return
+
+        name = self.name
+
+        def proxy(self):
+            value_list = self._data.get(name)
+
+            if value_list:
+                for i, value in enumerate(value_list):
+                    if isinstance(value, Document):
+                        value = value._id
+
+                    value_list[i] = value
+                    
+            return value_list
+
+        setattr(cls, name + '_', property(proxy))
+
 class EmbeddedDocumentField(BaseField):
     def __init__(self, document, **kwargs):
         if not (hasattr(document, '_meta') and document._meta['embedded']):
@@ -226,3 +245,18 @@ class ReferenceField(BaseField, Reference):
     def validate(self, value):
         if isinstance(value, Document):
             assert isinstance(value, self.document_cls)
+
+    def add_to_document(self, cls):
+        name = self.name
+
+        def proxy(self):
+            value = self._data.get(name)
+
+            if isinstance(value, Document):
+                value = value._id
+
+            return value
+
+        setattr(cls, name + '_id', property(proxy))
+
+

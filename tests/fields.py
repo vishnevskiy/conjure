@@ -227,7 +227,7 @@ class FieldTest(unittest.TestCase):
 
         post1 = BlogPost(content='Chips and gravy taste good.')
         post1.author = user
-#        self.assertRaises(exceptions.ValidationError, post1.save)
+        self.assertRaises(exceptions.ValidationError, post1.save)
 
         post2 = BlogPost(content='Chips and chilli taste good.')
         post1.author = post2

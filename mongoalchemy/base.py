@@ -72,6 +72,7 @@ class DocumentMeta(type):
 
         for field in new_cls._fields.values():
             field.owner = new_cls
+            field.add_to_document(new_cls)
 
         if not _meta['embedded']:
             new_cls.objects = Manager()
@@ -277,6 +278,9 @@ class BaseField(Common):
             validator(value)
 
         self.validate(value)
+
+    def add_to_document(self, cls):
+        pass
 
 class ObjectIdField(BaseField):
     def to_python(self, value):
