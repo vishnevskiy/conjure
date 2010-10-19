@@ -2,8 +2,7 @@ class Eagerload(object):
     def __init__(self, field, fields=None):
         self.fields = fields
 
-        from mongoalchemy.fields import ListField
-        if isinstance(field, ListField):
+        if field.__class__.__name__ == 'ListField':
             self.field = field.field
             self.name = field.name + '_'
             self.multi = True
