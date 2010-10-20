@@ -53,12 +53,8 @@ class Eagerload(object):
 
                             while True:
                                 data[data.index(value._id)] = value
-                        except ValueError:
-                            pass
-                        except IndexError:
-                            pass
-                        except KeyError:
+                        except (ValueError, IndexError, KeyError):
                             pass
                     else:
-                        if document._data[self.field.name] == value._data['_id']:
+                        if document._data.get(self.field.name) == value._data['_id']:
                             document._data[self.field.name] = value
