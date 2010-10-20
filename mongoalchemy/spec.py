@@ -7,7 +7,7 @@ class Specification(object):
     def compile(self, **kwargs):
         raise NotImplemented()
 
-    def __init__(self, expressions):
+    def __init__(self, expressions=None):
         if type(expressions) == types.ListType:
             self.expressions = {}
             self._set_expression(*expressions)
@@ -61,6 +61,9 @@ class UpdateSpecification(Specification):
 
     def _set_expression(self, op, k, v):
         self.expressions[op + ':' + k] = v
+
+    def empty(self):
+        return not self.expressions
 
     def __and__(self, other):
         spec = self.clone()

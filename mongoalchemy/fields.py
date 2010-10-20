@@ -68,7 +68,7 @@ class FloatField(IntegerField):
     def validate(self, value):
         if isinstance(value, int):
             value = float(value)
-            
+
         assert isinstance(value, float)
 
         if self.min_value is not None and value < self.min_value:
@@ -97,12 +97,15 @@ class DictField(BaseField):
             raise ValidationError('Invalid dictionary key name - keys may not contain "." or "$" characters')
 
     def __getitem__(self, key):
-        class Proxy(Common):
+        class Proxy(Common, Number):
             def __init__(self, key, field):
                 self.key = key
                 self.field = field
 
-            def get_key(self, **kwargs):
+            def _validate(self, value):
+                pass
+
+            def get_key(self, *args, **kwargs):
                 return self.field.get_key(False) + '.' + self.key
 
         return Proxy(key, self)
@@ -168,7 +171,7 @@ class ListField(List, BaseField):
                         value = value._id
 
                     value_list[i] = value
-                    
+
             return value_list
 
         setattr(cls, name + '_', property(proxy))

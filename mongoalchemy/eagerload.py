@@ -24,7 +24,7 @@ class Eagerload(object):
             return
 
         ids = set()
-        
+
         for document in self.documents:
             _id = getattr(document, self.name)
 
@@ -60,4 +60,5 @@ class Eagerload(object):
                         except KeyError:
                             pass
                     else:
-                        document._data[self.field.name] = value
+                        if document._data[self.field.name] == value._data['_id']:
+                            document._data[self.field.name] = value
