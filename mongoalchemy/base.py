@@ -91,12 +91,13 @@ class BaseDocument(object):
     def __init__(self, **data):
         self._data = {}
 
-        for attr_name, attr_value in self._fields.iteritems():
-            if attr_name in data:
-                setattr(self, attr_name, data.pop(attr_name))
-            else:
-                value = getattr(self, attr_name, None)
-                setattr(self, attr_name, value)
+        for attr_name, attr_value in data.iteritems():
+            try:
+                setattr(self, attr_name, attr_value)
+            except AttributeError:
+                pass
+#                value = getattr(self, attr_name, None)
+#                setattr(self, attr_name, value)
 
     @classmethod
     def _get_subclasses(cls):
@@ -139,7 +140,7 @@ class BaseDocument(object):
             return False
 
     def __len__(self):
-        return len(self._data)
+        return len(self._fields)
 
     def __repr__(self):
         return u'<%s: %s>' % (self.__class__.__name__, unicode(self))
@@ -156,12 +157,10 @@ class BaseDocument(object):
             return '%s object' % self.__class__.__name__
 
     @classmethod
-    def to_python(cls, doc):
-        if doc is not None:
-            python_doc = {}
-
-            if '_cls' in doc:
-                cls_name = doc['_cls']
+    def to_python(cls, data):
+        if data is not None:
+            if '_cls' in data:
+                cls_name = data['_cls']
 
                 if cls_name != cls._name:
                     subclasses = cls._get_subclasses()
@@ -171,13 +170,15 @@ class BaseDocument(object):
 
                     cls = subclasses[cls_name]
 
-            for name, field in cls._fields.iteritems():
-                if field.db_field in doc:
-                    python_doc[field.name] = field.to_python(doc[field.db_field])
+            doc = cls()
+                    
+            for field in cls._fields.itervalues():
+                if field.db_field in data:
+                    doc._data[field.name] = field.to_python(data[field.db_field])
 
-            doc = cls(**python_doc)
+            return doc
 
-        return doc
+        return data
 
     def to_mongo(self):
         doc = {}

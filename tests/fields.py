@@ -10,8 +10,8 @@ class FieldTest(unittest.TestCase):
             age = fields.IntegerField(default=30)
 
         user = User(name='Test User')
-        self.assertEqual(user._data['age'], 30)
-        self.assertEqual(user._data['_id'], 'test')
+        self.assertEqual(user.age, 30)
+        self.assertEqual(user._id, 'test')
 
     def test_required_values(self):
         class User(documents.Document):

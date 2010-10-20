@@ -7,6 +7,9 @@ import datetime
 
 ObjectIdField = ObjectIdField
 
+class GenericField(BaseField):
+    pass
+
 class StringField(String, BaseField):
     def __init__(self, regex=None, min_length=None, max_length=None, **kwargs):
         self.regex = re.compile(regex) if regex else None
