@@ -29,15 +29,15 @@ class FieldTest(unittest.TestCase):
             name = fields.StringField()
 
         user = User(name='Test User')
-        self.assertEqual(user._id, None)
+        self.assertEqual(user.id, None)
 
-        user._id = 47
+        user.id = 47
         self.assertRaises(exceptions.ValidationError, user.validate)
 
-        user._id = 'abc'
+        user.id = 'abc'
         self.assertRaises(exceptions.ValidationError, user.validate)
 
-        user._id = '497ce96f395f2f052a494fd4'
+        user.id = '497ce96f395f2f052a494fd4'
         user.validate()
 
     def test_string_validation(self):
@@ -280,7 +280,7 @@ class FieldTest(unittest.TestCase):
         peter = Employee(name='Peter Gibbons', boss=bill)
         peter.save()
 
-        peter = Employee.objects.with_id(peter._id)
+        peter = Employee.objects.with_id(peter.id)
         self.assertEqual(peter.boss, bill)
 
     def test_reference_query_conversion(self):
@@ -306,10 +306,10 @@ class FieldTest(unittest.TestCase):
         post2.save()
 
         post = BlogPost.objects.filter(BlogPost.author == m1).first()
-        self.assertEqual(post._id, post1._id)
+        self.assertEqual(post.id, post1.id)
 
         post = BlogPost.objects.filter(BlogPost.author == m2).first()
-        self.assertEqual(post._id, post2._id)
+        self.assertEqual(post.id, post2.id)
 
         Member.drop_collection()
         BlogPost.drop_collection()

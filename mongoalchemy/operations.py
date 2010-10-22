@@ -197,7 +197,7 @@ class List(_Base):
 class Reference(Common):
     def _convert(self, other):
         if isinstance(other, self._get_document_cls()):
-            other = other._fields['_id'].to_mongo(other._id)
+            other = other._fields['id'].to_mongo(other.id)
 
         return other
 

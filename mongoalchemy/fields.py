@@ -137,7 +137,7 @@ class ListField(List, BaseField):
                 for value in value_list:
                     if not isinstance(value, Document):
                         if value is not None:
-                            deref_list.append(referenced_cls.objects.filter_by(_id=value).one())
+                            deref_list.append(referenced_cls.objects.filter_by(id=value).one())
                     else:
                         deref_list.append(value)
 
@@ -171,7 +171,7 @@ class ListField(List, BaseField):
             if value_list:
                 for i, value in enumerate(value_list):
                     if isinstance(value, Document):
-                        value = value._id
+                        value = value.id
 
                     value_list[i] = value
 
@@ -237,22 +237,22 @@ class ReferenceField(BaseField, Reference):
 
         if not isinstance(value, Document):
             if value is not None:
-                instance._data[self.name] = self.document_cls.objects.filter_by(_id=value).one()
+                instance._data[self.name] = self.document_cls.objects.filter_by(id=value).one()
 
         return BaseField.__get__(self, instance, owner)
 
     def to_mongo(self, document):
-        field = self._document_cls._fields['_id']
+        field = self._document_cls._fields['id']
 
         if isinstance(document, Document):
-            id_ = document._id
+            doc_id = document.id
 
-            if id_ is None:
+            if doc_id is None:
                 raise ValidationError('You can only reference documents once they have been saved to the database')
         else:
-            id_ = document
+            doc_id = document
 
-        return field.to_mongo(id_)
+        return field.to_mongo(doc_id)
 
     def validate(self, value):
         if isinstance(value, Document):
@@ -265,7 +265,7 @@ class ReferenceField(BaseField, Reference):
             value = self._data.get(name)
 
             if isinstance(value, Document):
-                value = value._id
+                value = value.id
 
             return value
 

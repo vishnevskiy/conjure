@@ -52,7 +52,9 @@ class DocumentMeta(type):
             if hasattr(attr_value, '__class__') and issubclass(attr_value.__class__, BaseField):
                 attr_value.name = attr_name
 
-                if not attr_value.db_field:
+                if attr_name == 'id':
+                    attr_value.db_field = '_id'
+                elif not attr_value.db_field:
                     attr_value.db_field = attr_name
                     
                 _fields[attr_name] = attr_value
@@ -60,13 +62,13 @@ class DocumentMeta(type):
         if _meta['embedded']:
             _meta = dict([(k, _meta[k]) for k in ['embedded', 'verbose_name', 'verbose_name_plural']])
         else:
-            if '_id' not in _fields:
-                _id = ObjectIdField(db_field='_id')
-                _id.name = '_id'
-                _fields['_id'] = _id
-                attrs['_id'] = _id
-            elif not isinstance(_fields['_id'], ObjectIdField):
-                _fields['_id'].required = True
+            if 'id' not in _fields:
+                id_field = ObjectIdField(db_field='_id')
+                id_field.name = 'id'
+                _fields['id'] = id_field
+                attrs['id'] = id_field
+            elif not isinstance(_fields['id'], ObjectIdField):
+                _fields['id'].required = True
 
         attrs['_name'] = '.'.join(reversed(_name))
         attrs['_superclasses'] = _superclasses
@@ -149,10 +151,10 @@ class BaseDocument(object):
         try:
             return unicode(self).encode('utf-8')
         except:
-            _id = getattr(self, '_id', None)
+            doc_id = getattr(self, 'id', None)
 
-            if _id:
-                return unicode(_id)
+            if doc_id:
+                return unicode(doc_id)
 
             return '%s object' % self.__class__.__name__
 
@@ -204,13 +206,13 @@ class BaseDocument(object):
                 except (ValueError, AttributeError, AssertionError):
                     raise ValidationError('Invalid value for field of type "' +
                                                      field.__class__.__name__ + '"')
-            elif not (isinstance(field, ObjectIdField) and field.name == '_id') and field.required:
+            elif not (isinstance(field, ObjectIdField) and field.name == 'id') and field.required:
                 raise ValidationError('Field "%s" is required' % field.name)
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
-            if hasattr(self, '_id') and hasattr(other, '_id'):
-                return self._id == other._id
+            if hasattr(self, 'id') and hasattr(other, 'id'):
+                return self.id == other.id
 
             return self._data == other._data
 

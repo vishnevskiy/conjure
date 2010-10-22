@@ -31,7 +31,7 @@ class QueryTest(unittest.TestCase):
         self.assertEqual(len(users), 2)
         results = list(users)
         self.assertTrue(isinstance(results[0], User))
-        self.assertTrue(isinstance(results[0]._id, (bson.objectid.ObjectId, str, unicode)))
+        self.assertTrue(isinstance(results[0].id, (bson.objectid.ObjectId, str, unicode)))
         self.assertEqual(results[0].name, 'User A')
         self.assertEqual(results[0].age, 20)
         self.assertEqual(results[1].name, 'User B')
@@ -98,7 +98,7 @@ class QueryTest(unittest.TestCase):
 
         self.assertRaises(IndexError, User.objects.__getitem__, 2)
 
-        user = User.objects.with_id(user1._id)
+        user = User.objects.with_id(user1.id)
         self.assertEqual(user.name, "User A")
 
     def test_find_only_one(self):
@@ -226,7 +226,7 @@ class QueryTest(unittest.TestCase):
         employee = Employee(name='test employee', age=40, salary=30000)
         employee.save()
 
-        obj = Employee.objects.filter_by(_id=employee._id).only('salary').one()
+        obj = Employee.objects.filter_by(id=employee.id).only('salary').one()
         self.assertEqual(obj.salary, employee.salary)
         self.assertEqual(obj.name, None)
 
@@ -260,7 +260,7 @@ class QueryTest(unittest.TestCase):
         post.save()
 
         post_obj = BlogPost.objects.filter(BlogPost.info['title'] == 'test').first()
-        self.assertEqual(post_obj._id, post._id)
+        self.assertEqual(post_obj.id, post.id)
 
         BlogPost.drop_collection()
 
@@ -366,10 +366,10 @@ class QueryTest(unittest.TestCase):
         post.save()
 
         post_obj = BlogPost.objects.filter(BlogPost.author == user).first()
-        self.assertEqual(post._id, post_obj._id)
+        self.assertEqual(post.id, post_obj.id)
 
         post_obj = BlogPost.objects.filter(BlogPost.author.in_([user])).first()
-        self.assertEqual(post._id, post_obj._id)
+        self.assertEqual(post.id, post_obj.id)
 
         BlogPost.drop_collection()
 
@@ -389,7 +389,7 @@ class QueryTest(unittest.TestCase):
         group = Group()
         group.save()
 
-        Group.objects.filter(Group._id == group._id).update(Group.members.set([user1, user2]))
+        Group.objects.filter(Group.id == group.id).update(Group.members.set([user1, user2]))
         group.reload()
 
         self.assertTrue(len(group.members) == 2)
@@ -416,18 +416,18 @@ class QueryTest(unittest.TestCase):
         post_4.save()
         post_5.save()
 
-        ids = [post_1._id, post_2._id, post_5._id]
+        ids = [post_1.id, post_2.id, post_5.id]
         objects = BlogPost.objects.in_bulk(ids)
 
         self.assertEqual(len(objects), 3)
 
-        self.assertTrue(post_1._id in objects)
-        self.assertTrue(post_2._id in objects)
-        self.assertTrue(post_5._id in objects)
+        self.assertTrue(post_1.id in objects)
+        self.assertTrue(post_2.id in objects)
+        self.assertTrue(post_5.id in objects)
 
-        self.assertTrue(objects[post_1._id].title == post_1.title)
-        self.assertTrue(objects[post_2._id].title == post_2.title)
-        self.assertTrue(objects[post_5._id].title == post_5.title)
+        self.assertTrue(objects[post_1.id].title == post_1.title)
+        self.assertTrue(objects[post_2.id].title == post_2.title)
+        self.assertTrue(objects[post_5.id].title == post_5.title)
 
         BlogPost.drop_collection()
 

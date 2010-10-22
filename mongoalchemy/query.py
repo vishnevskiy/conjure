@@ -114,11 +114,11 @@ class Query(object):
         return list(self)
 
     def with_id(self, object_id):
-        return self.filter_by(_id=self._document_cls._id.to_mongo(object_id)).one()
+        return self.filter_by(id=self._document_cls.id.to_mongo(object_id)).one()
 
     def in_bulk(self, object_ids):
-        field = self._document_cls._id
-        return  dict([(doc._id, doc) for doc in self.filter(field.in_(map(field.to_mongo, object_ids)))])
+        field = self._document_cls.id
+        return  dict([(doc.id, doc) for doc in self.filter(field.in_(map(field.to_mongo, object_ids)))])
 
     def next(self):
         try:

@@ -26,21 +26,21 @@ class Eagerload(object):
         ids = set()
 
         for document in self.documents:
-            _id = getattr(document, self.name)
+            ref_id = getattr(document, self.name)
 
-            if _id:
-                if isinstance(_id, list):
-                    ids |= set(_id)
+            if ref_id:
+                if isinstance(ref_id, list):
+                    ids |= set(ref_id)
                 else:
-                    ids.add(_id)
+                    ids.add(ref_id)
 
         if ids:
             cls = self.field.document_cls
 
             if len(ids) == 1:
-                values = cls.objects.filter(cls._id == ids.pop())
+                values = cls.objects.filter(cls.id == ids.pop())
             else:
-                values = cls.objects.filter(cls._id.in_(list(ids)))
+                values = cls.objects.filter(cls.id.in_(list(ids)))
 
             if self.fields is not None:
                 values = values.only(*self.fields)
@@ -52,9 +52,9 @@ class Eagerload(object):
                             data = document._data[self.field.name]
 
                             while True:
-                                data[data.index(value._id)] = value
+                                data[data.index(value.id)] = value
                         except (ValueError, IndexError, KeyError):
                             pass
                     else:
-                        if document._data.get(self.field.name) == value._data['_id']:
+                        if document._data.get(self.field.name) == value._data['id']:
                             document._data[self.field.name] = value

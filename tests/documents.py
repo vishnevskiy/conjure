@@ -26,7 +26,7 @@ class DocumentTest(unittest.TestCase):
         self.assertEqual(User._fields['name'], name_field)
         self.assertEqual(User._fields['age'], age_field)
         self.assertFalse('non_field' in User._fields)
-        self.assertTrue('_id' in User._fields)
+        self.assertTrue('id' in User._fields)
         fields = list(User())
         self.assertTrue('name' in fields and 'age' in fields)
         self.assertFalse(hasattr(Document, '_fields'))
@@ -133,10 +133,10 @@ class DocumentTest(unittest.TestCase):
 
     def test_custom_id_field(self):
         class User(Document):
-            _id = StringField()
+            id = StringField()
             name = StringField()
 
-            username = Alias('_id')
+            username = Alias('id')
 
         User.drop_collection()
 
@@ -148,27 +148,28 @@ class DocumentTest(unittest.TestCase):
         class EmailUser(User):
             email = StringField()
 
-        user = User(_id='test', name='test user')
+        user = User(id='test', name='test user')
         user.save()
 
         user_obj = User.objects.first()
-        self.assertEqual(user_obj._id, 'test')
+        self.assertEqual(user_obj.id, 'test')
 
         user_son = User.objects._collection.find_one()
+        
         self.assertEqual(user_son['_id'], 'test')
-        self.assertTrue('username' not in user_son['_id'])
+        self.assertTrue('username' not in user_son)
 
         User.drop_collection()
 
-        user = User(_id='mongo', name='mongo user')
+        user = User(id='mongo', name='mongo user')
         user.save()
 
         user_obj = User.objects.first()
-        self.assertEqual(user_obj._id, 'mongo')
+        self.assertEqual(user_obj.id, 'mongo')
 
         user_son = User.objects._collection.find_one()
         self.assertEqual(user_son['_id'], 'mongo')
-        self.assertTrue('username' not in user_son['_id'])
+        self.assertTrue('username' not in user_son)
 
         User.drop_collection()
 
@@ -239,7 +240,7 @@ class DocumentTest(unittest.TestCase):
             content = StringField()
 
         self.assertTrue('content' in Comment._fields)
-        self.assertFalse('_id' in Comment._fields)
+        self.assertFalse('id' in Comment._fields)
         self.assertFalse('collection' in Comment._meta)
 
     def test_embedded_document_validation(self):
@@ -266,7 +267,7 @@ class DocumentTest(unittest.TestCase):
         person_obj = self.User.objects.find_one(self.User.name == 'Test User')
         self.assertEqual(person_obj['name'], 'Test User')
         self.assertEqual(person_obj['age'], 30)
-        self.assertEqual(person_obj['_id'], user._id)
+        self.assertEqual(person_obj['_id'], user.id)
 
         class Recipient(Document):
             email = EmailField(required=True)
@@ -282,7 +283,7 @@ class DocumentTest(unittest.TestCase):
         self.assertEqual(len(self.User.objects), 0)
 
     def test_save_custom_id(self):
-        user = self.User(name='Test User', age=30, _id='497ce96f395f2f052a494fd4')
+        user = self.User(name='Test User', age=30, id='497ce96f395f2f052a494fd4')
         user.save()
         
         user_obj = self.User.objects.find_one(self.User.name == 'Test User')

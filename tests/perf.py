@@ -46,7 +46,7 @@ class PerformanceTest(unittest.TestCase):
         Settings = self.Settings
         User = self.User
         User2 = self.User2
-        
+
         REPEAT = 10000
 
         start = time()
@@ -145,7 +145,7 @@ class PerformanceTest(unittest.TestCase):
 
         for n in xrange(REPEAT):
             User.objects.filter(User.username == 'stanislav').update(User.display_name.set('Test') & User.staff.set(False))
-            
+
         end = time()
         print 'MongoAlchemy', end - start
 
