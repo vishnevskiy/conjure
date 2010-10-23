@@ -299,7 +299,7 @@ class ObjectIdField(BaseField):
         return value
 
     def to_mongo(self, value):
-        if not isinstance(value, bson.objectid.ObjectId):
+        if value is not None and not isinstance(value, bson.objectid.ObjectId):
             try:
                 return bson.objectid.ObjectId(unicode(value))
             except Exception, e:
