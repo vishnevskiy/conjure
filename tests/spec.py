@@ -1,6 +1,7 @@
 from mongoalchemy import fields, documents, enums
 import unittest
 import datetime
+import bson
 
 class Settings(documents.Document):
     sound = fields.BooleanField(default=True)
@@ -11,8 +12,8 @@ class Settings(documents.Document):
 class User(documents.Document):
     username = fields.StringField()
     email = fields.EmailField()
-    following = fields.ListField(fields.ObjectIdField())
-    followers = fields.ListField(fields.ObjectIdField())
+    following = fields.ListField(fields.IntegerField())
+    followers = fields.ListField(fields.IntegerField())
     age = fields.IntegerField()
     settings = fields.EmbeddedDocumentField(Settings)
     joined_on = fields.DateTimeField(default=datetime.datetime.now)

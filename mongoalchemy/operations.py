@@ -159,7 +159,8 @@ class List(_Base):
         return self.add_to_set(val)
 
     def add_to_set(self, val):
-        return UpdateSpecification(['addToSet', self.get_key(True), val])
+        self.field._validate(val)
+        return UpdateSpecification(['addToSet', self.get_key(True), self.field.to_mongo(val)])
 
     def __add__(self, val):
         if type(val) in [types.ListType, types.TupleType]:
@@ -168,13 +169,15 @@ class List(_Base):
             return self.push(val)
 
     def push(self, val):
-        return UpdateSpecification(['push', self.get_key(True), val])
+        self.field._validate(val)
+        return UpdateSpecification(['push', self.get_key(True), self.field.to_mongo(val)])
 
     def push_all(self, val):
         if type(val) not in [types.ListType, types.TupleType]:
             raise TypeError()
 
-        return UpdateSpecification(['pushAll', self.get_key(True), val])
+        map(self.field._validate, val)
+        return UpdateSpecification(['pushAll', self.get_key(True), map(self.field.to_mongo, val)])
 
     def __sub__(self, val):
         if type(val) in [types.ListType, types.TupleType]:
@@ -195,47 +198,32 @@ class List(_Base):
         return UpdateSpecification(['pullAll', self.get_key(True), val])
 
 class Reference(Common):
-    def _convert(self, other):
-        if isinstance(other, self._get_document_cls()):
-            other = other._fields['id'].to_mongo(other.id)
-
-        return other
-
-    def _get_document_cls(self):
-        # GHETTO FOR NOW!
-        
-        if not hasattr(Reference, '_document_cls'):
-            from mongoalchemy.documents import Document
-            Reference._document_cls = Document
-
-        return Reference._document_cls
-
     def eq(self, other):
-        return Common.eq(self, self._convert(other))
+        return Common.eq(self, self.to_mongo(other))
 
     def ne(self, other):
-        return Common.ne(self, self._convert(other))
+        return Common.ne(self, self.to_mongo(other))
 
     def lt(self, other):
-        return Common.lt(self, self._convert(other))
+        return Common.lt(self, self.to_mongo(other))
 
     def lte(self, other):
-        return Common.lte(self, self._convert(other))
+        return Common.lte(self, self.to_mongo(other))
 
     def gt(self, other):
-        return Common.gt(self, self._convert(other))
+        return Common.gt(self, self.to_mongo(other))
 
     def gte(self, other):
-        return Common.gte(self, self._convert(other))
+        return Common.gte(self, self.to_mongo(other))
 
     def in_(self, vals):
-        vals = [self._convert(val) for val in vals]
+        vals = [self.to_mongo(val) for val in vals]
         return Common.in_(self, vals)
 
     def nin(self, vals):
-        vals = [self._convert(val) for val in vals]
+        vals = [self.to_mongo(val) for val in vals]
         return Common.nin(self, vals)
 
     def set(self, val):
         self._validate(val)
-        return Common.set(self, self._convert(val))
+        return Common.set(self, self.to_mongo(val))
