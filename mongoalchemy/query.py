@@ -204,7 +204,15 @@ class Query(object):
 
     def __iter__(self):
         if self._eagerloads:
-            return self._eagerload(map(self._document_cls.to_python, self._cursor)).__iter__()
+            documents = []
+
+            for obj in self._cursor:
+                document = self._document_cls.to_python(obj)
+
+                if document:
+                    documents.append(document)
+
+            return self._eagerload(documents).__iter__()
 
         return self
 
