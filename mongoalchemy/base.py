@@ -52,7 +52,7 @@ class DocumentMeta(type):
             if hasattr(attr_value, '__class__') and issubclass(attr_value.__class__, BaseField):
                 attr_value.name = attr_name
 
-                if attr_name == 'id':
+                if not _meta['embedded'] and attr_name == 'id':
                     attr_value.db_field = '_id'
                 elif not attr_value.db_field:
                     attr_value.db_field = attr_name
