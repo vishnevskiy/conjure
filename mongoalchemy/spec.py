@@ -167,7 +167,12 @@ class QuerySpecification(Specification):
         return spec.expressions
 
     def __or__(self, other):
-        return QuerySpecification(['', 'or', [self.clone(), other.clone()]])
+        if ':or' in self.expressions:
+            spec = self.clone()
+            spec.expressions[':or'].append(other.compile())
+            return spec
+        
+        return QuerySpecification(['', 'or', [self.compile(), other.compile()]])
 
     __ior__ = __or__
 

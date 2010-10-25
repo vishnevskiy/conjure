@@ -251,6 +251,7 @@ class BaseField(Common):
 
         if value is None:
             value = self.get_default()
+            instance._data[self.name] = value
 
         return value
 

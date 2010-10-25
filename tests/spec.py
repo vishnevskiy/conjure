@@ -146,5 +146,11 @@ class SpecTest(unittest.TestCase):
 
         self.assertEqual(update, {'$set': {'username': 'stanislav'}, '$push': {'following': 10, 'followers': 5}, '$pop': {'following': 1}})
 
+    def test_or(self):
+        spec = User.followers == 2
+        spec |= User.followers == 3
+        spec |= User.followers == 4
+        self.assertEqual(spec, {'$or': [{'followers': 2}, {'followers': 3}, {'followers': 4}]})
+
 if __name__ == '__main__':
     unittest.main()
