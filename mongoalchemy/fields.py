@@ -166,7 +166,7 @@ class ListField(List, BaseField):
         name = self.name
 
         def proxy(self):
-            value_list = self._data.get(name)
+            value_list = self._data.get(name) or []
 
             if value_list:
                 for i, value in enumerate(value_list):

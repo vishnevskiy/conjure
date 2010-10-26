@@ -51,9 +51,10 @@ class Query(object):
         return self
 
     def _eagerload(self, obj):
-        for eagerload in self._eagerloads:
-            eagerload.add_documents(obj)
-            eagerload.flush()
+        if obj:
+            for eagerload in self._eagerloads:
+                eagerload.add_documents(obj)
+                eagerload.flush()
 
         return obj
 
