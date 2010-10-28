@@ -4,6 +4,7 @@ from .exceptions import DoesNotExist, OperationError
 from .eagerload import Eagerload
 from .utils import lookup_field
 import pymongo
+import pprint
 
 class Manager(object):
     def __init__(self):
@@ -46,8 +47,10 @@ class Query(object):
 
         return transformed_keys
 
-    def eagerload(self, field, fields=None):
-        self._eagerloads.append(Eagerload(field, fields))
+    def eagerload(self, *fields, **kwargs):
+        eagerload = Eagerload(kwargs.get('only'))
+        map(eagerload.add_field, fields)
+        self._eagerloads.append(eagerload)
         return self
 
     def _eagerload(self, obj):
@@ -57,6 +60,11 @@ class Query(object):
                 eagerload.flush()
 
         return obj
+
+    def hint(self, key_or_list):
+        index = self._transform_key_list(key_or_list)
+        self._cursor.hint(index)
+        return self
 
     def ensure_index(self, key_or_list):
         indexes = self._transform_key_list(key_or_list)
@@ -163,15 +171,18 @@ class Query(object):
 
         for expr in exprs:
             if isinstance(expr, basestring):
-                field = lookup_field(self._document_cls, expr)
-                self._fields[field.get_key(False)] = 1
+                try:
+                    field = lookup_field(self._document_cls, expr)
+                    self._fields[field.get_key(False)] = 1
+                except KeyError:
+                    self._fields[expr] = 1
             elif isinstance(expr, Slice):
                 self._fields.update(expr.compile())
             else:
                 self._fields[expr.get_key(False)] = 1
-                
-        return self
 
+        return self
+    
     def sort(self, key_list):
         self._cursor.sort(self._transform_key_list(key_list))
         return self
@@ -180,7 +191,6 @@ class Query(object):
         plan = self._cursor.explain()
 
         if pretty:
-            import pprint
             plan = pprint.pformat(plan)
 
         return plan

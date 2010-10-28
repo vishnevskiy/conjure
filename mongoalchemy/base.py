@@ -5,6 +5,8 @@ from operator import itemgetter
 import copy
 import bson
 
+_documents = []
+
 class DocumentMeta(type):
     def __new__(cls, name, bases, attrs):
         metaclass = attrs.get('__metaclass__')
@@ -82,6 +84,8 @@ class DocumentMeta(type):
             field.add_to_document(new_cls)
 
         if not _meta['embedded']:
+            global _documents
+            _documents.append(new_cls)
             new_cls.objects = Manager()
 
         return new_cls
