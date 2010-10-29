@@ -100,7 +100,7 @@ class DictField(BaseField):
             raise ValidationError('Invalid dictionary key name - keys may not contain "." or "$" characters')
 
     def __getitem__(self, key):
-        class Proxy(Common, Number):
+        class Proxy(Common, String, Number):
             def __init__(self, key, field):
                 self.key = key
                 self.field = field
