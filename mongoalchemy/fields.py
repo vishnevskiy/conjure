@@ -128,6 +128,7 @@ class ListField(List, BaseField):
 
         if isinstance(self.field, ReferenceField):
             referenced_cls = self.field.document_cls
+            lazyload_only = self.field._lazyload_only
 
             value_list = instance._data.get(self.name)
 
@@ -137,7 +138,12 @@ class ListField(List, BaseField):
                 for value in value_list:
                     if not isinstance(value, Document):
                         if value is not None:
-                            deref_list.append(referenced_cls.objects.filter_by(id=value).one())
+                            q = referenced_cls.objects.filter_by(id=value)
+
+                            if lazyload_only:
+                                q = q.only(*lazyload_only)
+
+                            deref_list.append(q.one())
                     else:
                         deref_list.append(value)
 
@@ -214,11 +220,12 @@ class EmbeddedDocumentField(BaseField):
         return self.document._fields.get(name)
 
 class ReferenceField(BaseField, Reference):
-    def __init__(self, document_cls, **kwargs):
+    def __init__(self, document_cls, lazyload_only=None, **kwargs):
         if document_cls != 'self' and not (hasattr(document_cls, '_meta') and not document_cls._meta['embedded']):
             raise ValidationError('Argument to ReferenceField constructor must be a document class')
 
         self._document_cls = document_cls
+        self._lazyload_only = lazyload_only
 
         BaseField.__init__(self, **kwargs)
 
@@ -237,7 +244,12 @@ class ReferenceField(BaseField, Reference):
 
         if not isinstance(value, Document):
             if value is not None:
-                instance._data[self.name] = self.document_cls.objects.filter_by(id=value).one()
+                q = self.document_cls.objects.filter_by(id=value)
+
+                if self._lazyload_only:
+                    q = q.only(*self._lazyload_only)
+
+                instance._data[self.name] = q.one()
 
         return BaseField.__get__(self, instance, owner)
 

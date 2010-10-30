@@ -244,6 +244,33 @@ class FieldTest(unittest.TestCase):
         User.drop_collection()
         BlogPost.drop_collection()
 
+    def test_dereference_lazyload_only(self):
+        class User(documents.Document):
+            name = fields.StringField()
+            email = fields.StringField()
+
+        class Group(documents.Document):
+            members = fields.ListField(fields.ReferenceField(User, lazyload_only=['name']))
+
+        User.drop_collection()
+        Group.drop_collection()
+
+        user1 = User(name='user1', email='user2@google.com')
+        user1.save()
+        user2 = User(name='user2', email='user2@google.com')
+        user2.save()
+
+        group = Group(members=[user1, user2])
+        group.save()
+
+        group_obj = Group.objects.first()
+
+        self.assertEqual(group_obj.members[0].email, None)
+        self.assertEqual(group_obj.members[1].email, None)
+
+        User.drop_collection()
+        Group.drop_collection()
+
     def test_list_item_dereference(self):
         class User(documents.Document):
             name = fields.StringField()
