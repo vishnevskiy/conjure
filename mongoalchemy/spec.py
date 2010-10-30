@@ -231,6 +231,22 @@ class NotIn(QuerySpecification):
 class All(QuerySpecification):
     pass
 
+class Match(QuerySpecification):
+    def __init__(self, expression):
+        expressions = expression[2][0]
+
+        for expr in expression[2][1:]:
+            expressions &= expr
+
+        expression[2] = {}
+
+        offset = len(expression[0]) + 1
+
+        for k, v in expressions.compile().iteritems():
+            expression[2][k[offset:]] = v
+
+        QuerySpecification.__init__(self, expression)
+
 class Size(QuerySpecification):
     pass
 

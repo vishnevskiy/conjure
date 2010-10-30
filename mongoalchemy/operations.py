@@ -1,5 +1,5 @@
 from .spec import Equal, NotEqual, LessThan, LessThanEqual, GreaterThan, GreaterThanEqual, In, NotIn, \
-    Exists, Type, Where, UpdateSpecification, Mod, All, Size, Slice, Slice, QuerySpecification
+    Exists, Type, Where, UpdateSpecification, Mod, All, Size, Slice, QuerySpecification, Match
 import types
 import re
 
@@ -139,6 +139,9 @@ class List(_Base):
 
     def size(self, size):
         return Size([self.get_key(), 'size', size])
+
+    def match(self, *specs):
+        return Match([self.get_key(), 'elemMatch', specs])
 
     def pop(self):
         return UpdateSpecification(['pop', self.get_key(True), 1])

@@ -3,17 +3,18 @@ import unittest
 import datetime
 import bson
 
-class Settings(documents.Document):
+class Settings(documents.EmbeddedDocument):
     sound = fields.BooleanField(default=True)
 
-    class Meta:
-        embedded = True
-
+class Widget(documents.EmbeddedDocument):
+    index = fields.IntegerField()
+    
 class User(documents.Document):
     username = fields.StringField()
     email = fields.EmailField()
     following = fields.ListField(fields.IntegerField())
     followers = fields.ListField(fields.IntegerField())
+    widgets = fields.ListField(fields.EmbeddedDocumentField(Widget))
     age = fields.IntegerField()
     settings = fields.EmbeddedDocumentField(Settings)
     joined_on = fields.DateTimeField(default=datetime.datetime.now)
@@ -151,6 +152,10 @@ class SpecTest(unittest.TestCase):
         spec |= User.followers == 3
         spec |= User.followers == 4
         self.assertEqual(spec, {'$or': [{'followers': 2}, {'followers': 3}, {'followers': 4}]})
+
+    def test_elem_match(self):
+        self.assertEqual(User.widgets.match(Widget.index == 5), {'widgets': {'$elemMatch': {'index': 5}}})
+        self.assertEqual(User.widgets.match(Widget.index < 2, Widget.index > 5), {'widgets': {'$elemMatch': {'index': {'$lt': 2, '$gt': 5}}}})
 
 if __name__ == '__main__':
     unittest.main()
