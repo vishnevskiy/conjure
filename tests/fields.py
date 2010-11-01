@@ -343,7 +343,7 @@ class FieldTest(unittest.TestCase):
 
     def test_choices_validation(self):
         class Shirt(documents.Document):
-            size = fields.StringField(max_length=3, choices=('S','M','L','XL','XXL'))
+            size = fields.StringField(max_length=3, choices=[('S', 'Small'),('M', 'Medium'), ('L', 'Large')])
 
         Shirt.drop_collection()
 
@@ -357,6 +357,15 @@ class FieldTest(unittest.TestCase):
         self.assertRaises(exceptions.ValidationError, shirt.validate)
 
         Shirt.drop_collection()
+
+    def test_choices_display(self):
+        class Shirt(documents.Document):
+            size = fields.StringField(max_length=3, choices=[('S', 'Small'),('M', 'Medium'), ('L', 'Large')])
+
+        shirt = Shirt()
+        shirt.size = 'S'
+
+        self.assertEqual(shirt.get_size_display(), 'Small')
 
 if __name__ == '__main__':
     unittest.main()

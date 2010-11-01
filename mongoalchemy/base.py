@@ -294,7 +294,21 @@ class BaseField(Common):
         self.validate(value)
 
     def add_to_document(self, cls):
-        pass
+        if self.choices:
+            name = self.name
+            field = self
+
+            def proxy(self):
+                value = self._data.get(name)
+
+                for choice in field.choices:
+                    if choice[0] == value:
+                        return choice[1]
+
+                return None
+
+
+            setattr(cls, 'get_%s_display' % name, proxy)
 
     def lookup_member(self, name):
         return None
