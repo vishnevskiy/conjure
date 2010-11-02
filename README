@@ -1,0 +1,5 @@
+Still need to do documentation.
+
+This was refactored out of the Guildwork.com code base.
+
+ Inspirations taken from Django, SQLAlchemy and MongoEngine.
