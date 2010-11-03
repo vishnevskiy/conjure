@@ -5,6 +5,7 @@ from .eagerload import Eagerload
 from .utils import lookup_field
 import pymongo
 import pprint
+import re
 
 class Manager(object):
     def __init__(self):
@@ -28,6 +29,14 @@ class Query(object):
         self._pymongo_cursor = None
         self._fields = None
         self._eagerloads = []
+
+    def _compile_spec(self):
+        spec = self._spec.compile()
+
+        if self._document_cls._superclasses:
+            spec['_cls'] = re.compile('^' + self._document_cls._name)
+            
+        return spec
 
     def _transform_key_list(self, keys):
         transformed_keys = []
@@ -75,13 +84,13 @@ class Query(object):
         if len(expressions) == 1 and isinstance(expressions[0], dict):
             return self._collection.find(expressions[0], fields=self._fields)
 
-        return self.filter(*expressions).find(self._spec.compile(), fields=self._fields)
+        return self.filter(*expressions).find(self._compile_spec(), fields=self._fields)
 
     def find_one(self, *expressions):
         if len(expressions) == 1 and isinstance(expressions[0], dict):
             return self._collection.find_one(expressions[0], fields=self._fields)
 
-        return self.filter(*expressions)._collection.find_one(self._spec.compile(), fields=self._fields)
+        return self.filter(*expressions)._collection.find_one(self._compile_spec(), fields=self._fields)
 
     def filter(self, *expressions):
         for expression in expressions:
@@ -111,7 +120,7 @@ class Query(object):
         return self._eagerload(self._document_cls.to_python(self._one()))
 
     def _one(self):
-        return self._collection.find_one(self._spec.compile(), fields=self._fields)
+        return self._collection.find_one(self._compile_spec(), fields=self._fields)
 
     def first(self, *expressions):
         try:
@@ -196,11 +205,11 @@ class Query(object):
         return plan
 
     def delete(self, safe=False):
-        return self._collection.remove(self._spec.compile(), safe=safe)
+        return self._collection.remove(self._compile_spec(), safe=safe)
 
     def _update(self, update, safe, upsert, multi):
        try:
-           self._collection.update(self._spec.compile(), update, safe=safe, upsert=upsert, multi=multi)
+           self._collection.update(self._compile_spec(), update, safe=safe, upsert=upsert, multi=multi)
        except pymongo.errors.OperationFailure, err:
            raise OperationError(unicode(err))
 
@@ -230,7 +239,7 @@ class Query(object):
     @property
     def _cursor(self):
         if self._pymongo_cursor is None:
-            self._pymongo_cursor = self._collection.find(self._spec.compile(), fields=self._fields)
+            self._pymongo_cursor = self._collection.find(self._compile_spec(), fields=self._fields)
 
         return self._pymongo_cursor
 
