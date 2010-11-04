@@ -238,12 +238,14 @@ class BaseField(Common):
         if isinstance(self.owner, BaseField):
             return self.owner.get_key(positional)
         elif  'parent_field' in self.owner._meta:
-            if positional and self.owner._meta['parent_field'].__class__.__name__ == 'ListField':
+            parent_field = self.owner._meta['parent_field']
+
+            if positional and parent_field.owner.__class__.__name__ == 'ListField':
                 sep = '.$.'
             else:
                 sep = '.'
-
-            return self.owner._meta['parent_field'].get_key(positional) + sep + self.db_field
+                
+            return parent_field.get_key(positional) + sep + self.db_field
 
         return self.db_field
 

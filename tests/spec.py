@@ -2,6 +2,8 @@ from mongoalchemy import fields, documents, enums
 import unittest
 import datetime
 import bson
+from mongoalchemy.documents import EmbeddedDocument
+from mongoalchemy.fields import StringField, EmbeddedDocumentField, ListField
 
 class Settings(documents.EmbeddedDocument):
     sound = fields.BooleanField(default=True)
@@ -157,5 +159,20 @@ class SpecTest(unittest.TestCase):
         self.assertEqual(User.widgets.match(Widget.index == 5), {'widgets': {'$elemMatch': {'index': 5}}})
         self.assertEqual(User.widgets.match(Widget.index < 2, Widget.index > 5), {'widgets': {'$elemMatch': {'index': {'$lt': 2, '$gt': 5}}}})
 
+    def test_list_embedded(self):
+        class Note(EmbeddedDocument):
+            text = StringField()
+
+        class Settings(EmbeddedDocument):
+            text = StringField()
+
+        class User(EmbeddedDocument):
+            notes = ListField(EmbeddedDocumentField(Note))
+            settings = EmbeddedDocumentField(Settings)
+
+        self.assertEqual(Note.text == 'test', {'notes.text': 'test'})
+        self.assertEqual(Note.text.set('test'), {'$set': {'notes.$.text': 'test'}})
+        self.assertEqual(Settings.text.set('test'), {'$set': {'settings.text': 'test'}})
+        
 if __name__ == '__main__':
     unittest.main()
