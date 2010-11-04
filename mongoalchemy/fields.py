@@ -50,6 +50,8 @@ class IntegerField(Number, BaseField):
         BaseField.__init__(self, **kwargs)
 
     def to_python(self, value):
+        if value is None:
+            return self.get_default()
         return int(value)
 
     def validate(self, value):
@@ -69,6 +71,9 @@ class FloatField(IntegerField):
         return float(value)
 
     def validate(self, value):
+        if value is None:
+            return self.get_default()
+        
         if isinstance(value, int):
             value = float(value)
 

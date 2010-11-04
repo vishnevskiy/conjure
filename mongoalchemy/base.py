@@ -238,7 +238,7 @@ class BaseField(Common):
         if isinstance(self.owner, BaseField):
             return self.owner.get_key(positional)
         elif  'parent_field' in self.owner._meta:
-            if positional:
+            if positional and self.owner._meta['parent_field'].__class__.__name__ == 'ListField':
                 sep = '.$.'
             else:
                 sep = '.'
