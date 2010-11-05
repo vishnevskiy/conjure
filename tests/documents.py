@@ -362,6 +362,16 @@ class DocumentTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+    def test_meta_cls(self):
+        class Test(EmbeddedDocument):
+            name = IntegerField()
+
+        class Test2(Test):
+            name = IntegerField()
+
+        self.assertFalse('_cls' in Test().to_mongo())
+        self.assertTrue('_cls' in Test2().to_mongo())
+
     def tearDown(self):
         self.User.drop_collection()
 

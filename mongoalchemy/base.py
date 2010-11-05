@@ -195,7 +195,7 @@ class BaseDocument(object):
             if value is not None:
                 doc[field.db_field] = field.to_mongo(value)
 
-        if not self._meta['embedded']:
+        if self._superclasses:
             doc['_cls'] = self._name
 
         return doc
