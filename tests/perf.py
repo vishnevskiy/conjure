@@ -5,7 +5,6 @@
 #from mongoalchemy.base import ObjectIdField
 #from bson.objectid import ObjectId
 #import pymongo
-#from _mongomapper import Document as MMDocument
 #
 #class PerformanceTest(unittest.TestCase):
 #    def setUp(self):
@@ -59,15 +58,6 @@
 #        print 'MongoAlchemy', end - start
 #
 #        start = time()
-#
-#        for n in xrange(REPEAT):
-#            User2(username='stanislav', display_name='Stanislav', staff=True,
-#                     friends=[ObjectId(), ObjectId()], settings={'sound': True}).save()
-#
-#        end = time()
-#        print 'MongoMapper', end - start
-#
-#        start = time()
 #        for n in xrange(REPEAT):
 #            self.collection.insert({
 #                'username': 'stanislav',
@@ -110,13 +100,6 @@
 #
 #        start = time()
 #
-#        User2.documents.find({'username': 'stanislav'}).all()
-#
-#        end = time()
-#        print 'MongoMapper', end - start
-#
-#        start = time()
-#
 #        list(self.collection.find({'username': 'stanislav'}))
 #
 #        end = time()
@@ -148,14 +131,6 @@
 #
 #        end = time()
 #        print 'MongoAlchemy', end - start
-#
-#        start = time()
-#
-#        for n in xrange(REPEAT):
-#            User2.documents.update({'username': 'stanislav'}, {'$set': {'staff': False, 'dislay_name': 'Test'}})
-#
-#        end = time()
-#        print 'MongoMapper', end - start
 #
 #        start = time()
 #
