@@ -200,6 +200,13 @@ class List(_Base):
 
         return UpdateSpecification(['pullAll', self.get_key(True), val])
 
+    def replace_with(self, val):
+        self.field._validate(val)
+        return UpdateSpecification(['set', self.get_key(True) + '.$', self.field.to_mongo(val)])
+
+    def __mod__(self, val):
+        return self.replace_with(val)
+
 class Reference(Common):
     def eq(self, other):
         return Common.eq(self, self.to_mongo(other))

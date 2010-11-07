@@ -71,9 +71,6 @@ class FloatField(IntegerField):
         return float(value)
 
     def validate(self, value):
-        if value is None:
-            return self.get_default()
-        
         if isinstance(value, int):
             value = float(value)
 
@@ -97,12 +94,37 @@ class DateTimeField(BaseField):
         assert isinstance(value, datetime.datetime)
 
 class DictField(BaseField):
-    def validate(self, value):
-        if not isinstance(value, dict):
-            raise ValidationError('Only dictionaries may be used in a DictField')
+    def __init__(self, field=None,**kwargs):
+        if field:
+            if not isinstance(field, BaseField):
+                raise ValidationError('Argument to Dict constructor must be a valid field or None')
 
-        if any(('.' in k or '$' in k) for k in value):
-            raise ValidationError('Invalid dictionary key name - keys may not contain "." or "$" characters')
+            field.owner = self
+            self.field = field
+        else:
+            self.field = None
+
+        BaseField.__init__(self, **kwargs)
+
+    def validate(self, value):
+        if not self.field:
+            if not isinstance(value, dict):
+                raise ValidationError('Only dictionaries may be used in a DictField')
+
+            if any(('.' in k or '$' in k) for k in value):
+                raise ValidationError('Invalid dictionary key name - keys may not contain "." or "$" characters')
+        else:
+            try:
+                self.field.validate(value)
+            except Exception, err:
+                raise ValidationError('Invalid ListField item (%s)' % str(err))
+
+    def to_python(self, value):
+        if self.field:
+            return self.field.to_python(item)
+
+    def to_mongo(self, value):
+        return [self.field.to_mongo(item) for item in value]
 
     def __getitem__(self, key):
         class Proxy(Common, String, Number):
@@ -226,7 +248,7 @@ class EmbeddedDocumentField(BaseField):
 
 class ReferenceField(BaseField, Reference):
     def __init__(self, document_cls, lazyload_only=None, **kwargs):
-        if document_cls != 'self' and not (hasattr(document_cls, '_meta') and not document_cls._meta['embedded']):
+        if not isinstance(document_cls, str) and not (hasattr(document_cls, '_meta') and not document_cls._meta['embedded']):
             raise ValidationError('Argument to ReferenceField constructor must be a document class')
 
         self._document_cls = document_cls
@@ -236,8 +258,16 @@ class ReferenceField(BaseField, Reference):
 
     @property
     def document_cls(self):
-        if self._document_cls == 'self':
-            self._document_cls = self.owner
+        document_cls = self._document_cls
+
+        if isinstance(document_cls, str):
+            if document_cls == 'self':
+                self._document_cls = self.owner
+            else:
+                _module = document_cls.rpartition('.')
+                _temp = __import__(_module[0], globals(), locals(), [_module[2]], -1)
+
+                self._document_cls = _temp.__dict__[_module[2]]
 
         return self._document_cls
 
@@ -259,7 +289,7 @@ class ReferenceField(BaseField, Reference):
         return BaseField.__get__(self, instance, owner)
 
     def to_mongo(self, document):
-        field = self._document_cls._fields['id']
+        field = self.document_cls._fields['id']
 
         if isinstance(document, Document):
             doc_id = document.id

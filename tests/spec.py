@@ -173,6 +173,16 @@ class SpecTest(unittest.TestCase):
         self.assertEqual(Note.text == 'test', {'notes.text': 'test'})
         self.assertEqual(Note.text.set('test'), {'$set': {'notes.$.text': 'test'}})
         self.assertEqual(Settings.text.set('test'), {'$set': {'settings.text': 'test'}})
-        
+
+    def test_replace_with(self):
+        class Note(EmbeddedDocument):
+            text = StringField()
+
+        class User(EmbeddedDocument):
+            notes = ListField(EmbeddedDocumentField(Note))
+
+        self.assertEqual(User.notes.replace_with(Note(text='It works!')), {'$set': {'notes.$': {'text': u'It works!'}}})
+        self.assertEqual(User.notes % Note(text='It works!'), {'$set': {'notes.$': {'text': u'It works!'}}})
+
 if __name__ == '__main__':
     unittest.main()
