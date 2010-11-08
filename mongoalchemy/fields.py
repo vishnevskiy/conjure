@@ -4,6 +4,8 @@ from .exceptions import ValidationError
 from .documents import Document
 import re
 import datetime
+import copy
+import functools
 
 ObjectIdField = ObjectIdField
 
@@ -71,6 +73,9 @@ class FloatField(IntegerField):
         return float(value)
 
     def validate(self, value):
+        if value is None:
+            return self.get_default()
+
         if isinstance(value, int):
             value = float(value)
 
@@ -94,37 +99,12 @@ class DateTimeField(BaseField):
         assert isinstance(value, datetime.datetime)
 
 class DictField(BaseField):
-    def __init__(self, field=None,**kwargs):
-        if field:
-            if not isinstance(field, BaseField):
-                raise ValidationError('Argument to Dict constructor must be a valid field or None')
-
-            field.owner = self
-            self.field = field
-        else:
-            self.field = None
-
-        BaseField.__init__(self, **kwargs)
-
     def validate(self, value):
-        if not self.field:
-            if not isinstance(value, dict):
-                raise ValidationError('Only dictionaries may be used in a DictField')
+        if not isinstance(value, dict):
+            raise ValidationError('Only dictionaries may be used in a DictField')
 
-            if any(('.' in k or '$' in k) for k in value):
-                raise ValidationError('Invalid dictionary key name - keys may not contain "." or "$" characters')
-        else:
-            try:
-                self.field.validate(value)
-            except Exception, err:
-                raise ValidationError('Invalid ListField item (%s)' % str(err))
-
-    def to_python(self, value):
-        if self.field:
-            return self.field.to_python(item)
-
-    def to_mongo(self, value):
-        return [self.field.to_mongo(item) for item in value]
+        if any(('.' in k or '$' in k) for k in value):
+            raise ValidationError('Invalid dictionary key name - keys may not contain "." or "$" characters')
 
     def __getitem__(self, key):
         class Proxy(Common, String, Number):
@@ -215,6 +195,75 @@ class ListField(List, BaseField):
     def lookup_member(self, name):
         return self.field.lookup_member(name)
 
+class MapField(BaseField):
+    def __init__(self, field, **kwargs):
+        if not isinstance(field, BaseField):
+            raise ValidationError('Argument to MapField constructor must be a valid field')
+
+        field.owner = self
+        self.field = field
+        BaseField.__init__(self, **kwargs)
+
+    def to_python(self, value):
+        return dict((k, self.field.to_python(item)) for k, item in value.iteritems())
+
+    def to_mongo(self, value):
+        return dict((k, self.field.to_mongo(item)) for k, item in value.iteritems())
+
+    def validate(self, value):
+        if not isinstance(value, dict):
+            raise ValidationError('Only dict may be used in a map field')
+
+        try:
+            [self.field.validate(item) for item in value.itervalues()]
+        except Exception, err:
+            raise ValidationError('Invalid MapField item (%s)' % str(err))
+
+    def __getitem__(self, key):
+        if isinstance(self.field, EmbeddedDocumentField):
+            class Proxy(object):
+                def __init__(self, key, field):
+                    self.key = key
+                    self.field = field
+
+                def __lshift__(self, expressions):
+                    if not isinstance(expressions, tuple):
+                        expressions = expressions,
+
+                    for e in expressions:
+                        def wrap(name):
+                            if e.is_query():
+                                left, _, right = name.partition(self.field.name)
+                                return left + self.get_key(False) + right
+                            elif e.is_update():
+                                left, _, right = name.rpartition(self.field.name)
+                                return left + self.get_key(True)  + right
+
+                        e.expressions = dict((wrap(key), item) for key, item in e.expressions.iteritems())
+
+                    new_expression = expressions[0]
+
+                    for expression in expressions[1:]:
+                        new_expression &= expression
+
+                    return new_expression
+
+                def _validate(self, value):
+                    pass
+
+                def get_key(self, *args, **kwargs):
+                    return self.field.get_key(*args, **kwargs) + '.' + self.key
+            return Proxy(key, self)
+        else:
+            field = copy.deepcopy(self.field)
+
+            def get_key(field, key, *args, **kwargs):
+                return field.get_key(*args, **kwargs) + '.' + key
+
+            field.get_key = functools.partial(get_key, self.field, key)
+
+            return field
+
 class EmbeddedDocumentField(BaseField):
     def __init__(self, document, **kwargs):
         if not (hasattr(document, '_meta') and document._meta['embedded']):
@@ -248,7 +297,7 @@ class EmbeddedDocumentField(BaseField):
 
 class ReferenceField(BaseField, Reference):
     def __init__(self, document_cls, lazyload_only=None, **kwargs):
-        if not isinstance(document_cls, str) and not (hasattr(document_cls, '_meta') and not document_cls._meta['embedded']):
+        if document_cls != 'self' and not (hasattr(document_cls, '_meta') and not document_cls._meta['embedded']):
             raise ValidationError('Argument to ReferenceField constructor must be a document class')
 
         self._document_cls = document_cls
@@ -258,16 +307,8 @@ class ReferenceField(BaseField, Reference):
 
     @property
     def document_cls(self):
-        document_cls = self._document_cls
-
-        if isinstance(document_cls, str):
-            if document_cls == 'self':
-                self._document_cls = self.owner
-            else:
-                _module = document_cls.rpartition('.')
-                _temp = __import__(_module[0], globals(), locals(), [_module[2]], -1)
-
-                self._document_cls = _temp.__dict__[_module[2]]
+        if self._document_cls == 'self':
+            self._document_cls = self.owner
 
         return self._document_cls
 
@@ -289,7 +330,7 @@ class ReferenceField(BaseField, Reference):
         return BaseField.__get__(self, instance, owner)
 
     def to_mongo(self, document):
-        field = self.document_cls._fields['id']
+        field = self._document_cls._fields['id']
 
         if isinstance(document, Document):
             doc_id = document.id

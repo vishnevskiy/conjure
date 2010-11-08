@@ -114,21 +114,21 @@ class Number(_Base):
 
     def __mod__(self, other):
         class Proxy(object):
-            def __init__(self, name, a):
-                self.name = name
+            def __init__(self, field, a):
+                self.field = field
                 self.a = a
 
             def __eq__(self, b):
-                return Mod([self.name, 'mod', [self.a, b]])
+                return Mod([self.field.get_key(False), 'mod', [self.a, b]])
 
             eq = __eq__
 
             def __ne__(self, b):
-                return Mod([self.name, 'not mod', [self.a, b]])
+                return Mod([self.field.get_key(False), 'not mod', [self.a, b]])
 
             ne = __ne__
 
-        return Proxy(self.name, other)
+        return Proxy(self, other)
 
     def mod(self, a, b):
         return Mod([self.name, 'mod', [a, b]])

@@ -49,6 +49,12 @@ class Specification(object):
     def __delitem__(self, k):
         return self.expressions.__delitem__(k)
 
+    def is_update(self):
+        return isinstance(self, UpdateSpecification)
+
+    def is_query(self):
+        return isinstance(self, QuerySpecification)
+
 class UpdateSpecification(Specification):
     def compile(self):
         d = collections.defaultdict(dict)

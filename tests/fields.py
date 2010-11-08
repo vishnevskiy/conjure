@@ -367,5 +367,36 @@ class FieldTest(unittest.TestCase):
 
         self.assertEqual(shirt.get_size_display(), 'Small')
 
+    def test_map_field(self):
+        class Group(documents.EmbeddedDocument):
+            name = fields.StringField()
+
+        class Page(documents.EmbeddedDocument):
+            name = fields.StringField()
+            position = fields.IntegerField()
+            groups = fields.ListField(fields.EmbeddedDocumentField(Group))
+
+        class Wiki(documents.Document):
+            pages = fields.MapField(fields.EmbeddedDocumentField(Page))
+            tag_cloud = fields.MapField(fields.ListField(fields.StringField()))
+
+        Wiki.drop_collection()
+
+        self.assertEqual(Wiki.pages['home'] << (Page.position % 5 == 2, Page.name == 'Home'),
+             {'pages.home.name': 'Home', 'pages.home.position': {'$mod': [5, 2]}})
+        self.assertEqual(Wiki.pages['home'] << (Page.position.set(5), Group.name.set('Leader')),
+             {'$set': {'pages.home.position': 5, 'pages.home.groups.$.name': u'Leader'}})
+        
+        self.assertEqual(Wiki.tag_cloud['home'] + 'cat', {'$push': {'tag_cloud.home': u'cat'}})
+
+        page = Page(name='Home', position=1, groups=[Group(name='Leader')])
+
+        wiki = Wiki(pages={'home': page})
+        wiki.save()
+
+        self.assertEqual(Wiki.objects.with_id(wiki.id).pages['home']._data, page._data)
+
+        Wiki.drop_collection()
+        
 if __name__ == '__main__':
     unittest.main()
