@@ -221,7 +221,7 @@ class MapField(BaseField):
 
     def __getitem__(self, key):
         if isinstance(self.field, EmbeddedDocumentField):
-            class Proxy(object):
+            class Proxy(Common):
                 def __init__(self, key, field):
                     self.key = key
                     self.field = field
@@ -248,11 +248,15 @@ class MapField(BaseField):
 
                     return new_expression
 
+                def to_mongo(self, *args, **kwargs):
+                    return self.field.field.to_mongo(*args, **kwargs)
+                
                 def _validate(self, value):
                     pass
 
                 def get_key(self, *args, **kwargs):
                     return self.field.get_key(*args, **kwargs) + '.' + self.key
+                
             return Proxy(key, self)
         else:
             field = copy.deepcopy(self.field)
@@ -297,7 +301,7 @@ class EmbeddedDocumentField(BaseField):
 
 class ReferenceField(BaseField, Reference):
     def __init__(self, document_cls, lazyload_only=None, **kwargs):
-        if document_cls != 'self' and not (hasattr(document_cls, '_meta') and not document_cls._meta['embedded']):
+        if not isinstance(document_cls, str) and not (hasattr(document_cls, '_meta') and not document_cls._meta['embedded']):
             raise ValidationError('Argument to ReferenceField constructor must be a document class')
 
         self._document_cls = document_cls
@@ -307,8 +311,16 @@ class ReferenceField(BaseField, Reference):
 
     @property
     def document_cls(self):
-        if self._document_cls == 'self':
-            self._document_cls = self.owner
+        document_cls = self._document_cls
+
+        if isinstance(document_cls, str):
+            if document_cls == 'self':
+                self._document_cls = self.owner
+            else:
+                _module = document_cls.rpartition('.')
+                _temp = __import__(_module[0], globals(), locals(), [_module[2]], -1)
+
+                self._document_cls = _temp.__dict__[_module[2]]
 
         return self._document_cls
 
@@ -330,7 +342,7 @@ class ReferenceField(BaseField, Reference):
         return BaseField.__get__(self, instance, owner)
 
     def to_mongo(self, document):
-        field = self._document_cls._fields['id']
+        field = self.document_cls._fields['id']
 
         if isinstance(document, Document):
             doc_id = document.id
