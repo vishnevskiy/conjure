@@ -127,7 +127,7 @@ class ListField(List, BaseField):
 
         field.owner = self
         self.field = field
-        BaseField.__init__(self, default=default or [], **kwargs)
+        BaseField.__init__(self, default=default or list, **kwargs)
 
     def __get__(self, instance, owner):
         if instance is None:
