@@ -315,7 +315,10 @@ class ReferenceField(BaseField, Reference):
 
         if isinstance(document_cls, str):
             if document_cls == 'self':
-                self._document_cls = self.owner
+                if isinstance(self.owner, ListField):
+                    self._document_cls = self.owner.owner
+                else:
+                    self._document_cls = self.owner
             else:
                 _module = document_cls.rpartition('.')
                 _temp = __import__(_module[0], globals(), locals(), [_module[2]], -1)

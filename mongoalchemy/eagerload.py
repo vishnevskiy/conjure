@@ -1,5 +1,3 @@
-import weakref
-
 def fieldgetter(item):
     names = item.split('.')
 
@@ -116,7 +114,6 @@ class Eagerload(object):
 
                             while True:
                                 data[data.index(value.id)] = value
-
                         except (ValueError, IndexError, KeyError):
                             pass
                     elif document._data.get(meta.field.name) == value._data['id']:
