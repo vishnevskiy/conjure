@@ -84,7 +84,7 @@ class Query(object):
         if len(expressions) == 1 and isinstance(expressions[0], dict):
             return self._collection.find(expressions[0], fields=self._fields)
 
-        return self.filter(*expressions).find(self._compile_spec(), fields=self._fields)
+        return self.filter(*expressions)._collection.find(self._compile_spec(), fields=self._fields)
 
     def find_one(self, *expressions):
         if len(expressions) == 1 and isinstance(expressions[0], dict):
@@ -149,7 +149,7 @@ class Query(object):
         except StopIteration, e:
             self.rewind()
             raise e
-    
+
     def rewind(self):
         self._cursor.rewind()
         return self
@@ -191,7 +191,7 @@ class Query(object):
                 self._fields[expr.get_key(False)] = 1
 
         return self
-    
+
     def sort(self, key_list):
         self._cursor.sort(self._transform_key_list(key_list))
         return self
