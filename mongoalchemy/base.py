@@ -190,7 +190,7 @@ class BaseDocument(object):
         doc = {}
 
         for field_name, field in self._fields.iteritems():
-            value = getattr(self, field_name, None)
+            value = self._data.get(field_name, None)
 
             if value is not None:
                 doc[field.db_field] = field.to_mongo(value)
