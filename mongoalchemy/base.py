@@ -58,7 +58,7 @@ class DocumentMeta(type):
                     attr_value.db_field = '_id'
                 elif not attr_value.db_field:
                     attr_value.db_field = attr_name
-                    
+
                 _fields[attr_name] = attr_value
 
         if _meta['embedded']:
@@ -96,6 +96,7 @@ class BaseDocument(object):
 
     def __init__(self, **data):
         self._data = {}
+        self._search_index = None
 
         for attr_name, attr_value in data.iteritems():
             try:
@@ -177,7 +178,7 @@ class BaseDocument(object):
                     cls = subclasses[cls_name]
 
             doc = cls()
-                    
+
             for field in cls._fields.itervalues():
                 if field.db_field in data:
                     doc._data[field.name] = field.to_python(data[field.db_field])
@@ -224,7 +225,9 @@ class BaseDocument(object):
 
 
 class BaseField(Common):
-    def __init__(self, verbose_name=None, db_field=None, required=False, default=None, validators=None, choices=None):
+    def __init__(self, verbose_name=None, db_field=None, required=False, default=None, validators=None, choices=None,
+                 editable=True, help_text=''):
+        
         self.owner = None
         self.name = None
         self.verbose_name = verbose_name
@@ -233,6 +236,8 @@ class BaseField(Common):
         self.default = default
         self.validators = validators or []
         self.choices = choices or []
+        self.editable = editable
+        self.help_text = help_text
 
     def get_key(self, positional=False):
         if isinstance(self.owner, BaseField):
@@ -244,7 +249,7 @@ class BaseField(Common):
                 sep = '.$.'
             else:
                 sep = '.'
-                
+
             return parent_field.get_key(positional) + sep + self.db_field
 
         return self.db_field

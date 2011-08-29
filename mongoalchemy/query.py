@@ -3,6 +3,7 @@ from .spec import QuerySpecification, Slice
 from .exceptions import DoesNotExist, OperationError
 from .eagerload import Eagerload
 from .utils import lookup_field
+import copy
 import pymongo
 import pprint
 import re
@@ -29,13 +30,22 @@ class Query(object):
         self._pymongo_cursor = None
         self._fields = None
         self._eagerloads = []
+        self._deferred_sort = []
+
+    def clone(self):
+        q = Query(self._document_cls, self._collection)
+        q._spec = self._spec.clone()
+        q._fields = copy.deepcopy(self._fields)
+        q._eagerloads = copy.deepcopy(self._eagerloads)
+        q._deferred_sort = copy.deepcopy(self._deferred_sort)
+        return q
 
     def _compile_spec(self):
         spec = self._spec.compile()
 
         if self._document_cls._superclasses:
             spec['_cls'] = re.compile('^' + self._document_cls._name)
-            
+
         return spec
 
     def _transform_key_list(self, keys):
@@ -193,7 +203,11 @@ class Query(object):
         return self
 
     def sort(self, key_list):
-        self._cursor.sort(self._transform_key_list(key_list))
+        if self._pymongo_cursor is None:
+            self._deferred_sort.append(key_list)
+        else:
+            self._cursor.sort(self._transform_key_list(key_list))
+
         return self
 
     def explain(self, pretty=False):
@@ -222,6 +236,9 @@ class Query(object):
     def upsert(self, update_spec, safe=False):
         self._update(update_spec.compile(), safe, True, False)
 
+    def group(self, key, initial, reduce, finalize=None):
+        return self._collection.group(key, self._compile_spec(), initial, reduce, finalize)
+
     def __iter__(self):
         if self._eagerloads:
             documents = []
@@ -241,7 +258,16 @@ class Query(object):
         if self._pymongo_cursor is None:
             self._pymongo_cursor = self._collection.find(self._compile_spec(), fields=self._fields)
 
+            for key_list in self._deferred_sort:
+                self.sort(key_list)
+
         return self._pymongo_cursor
 
     def __repr__(self):
         return self._spec.__repr__()
+    
+    def search(self, *args, **kwargs):
+        if self._document_cls._search_index is not None:
+            return self._document_cls._search_index.search(*args, **kwargs)
+        
+        raise AttributeError()

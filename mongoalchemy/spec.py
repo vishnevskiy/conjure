@@ -177,7 +177,7 @@ class QuerySpecification(Specification):
             spec = self.clone()
             spec.expressions[':or'].append(other.compile())
             return spec
-        
+
         return QuerySpecification(['', 'or', [self.compile(), other.compile()]])
 
     __ior__ = __or__

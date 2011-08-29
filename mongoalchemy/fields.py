@@ -13,10 +13,11 @@ class GenericField(BaseField):
     pass
 
 class StringField(String, BaseField):
-    def __init__(self, regex=None, min_length=None, max_length=None, **kwargs):
+    def __init__(self, regex=None, min_length=None, max_length=None, escape=False, **kwargs):
         self.regex = re.compile(regex) if regex else None
         self.min_length = min_length
         self.max_length = max_length
+        self.escape = escape
         BaseField.__init__(self, **kwargs)
 
     def to_python(self, value):
@@ -114,6 +115,9 @@ class DictField(BaseField):
 
             def _validate(self, value):
                 pass
+
+            def to_mongo(self, value):
+                return value
 
             def get_key(self, *args, **kwargs):
                 return self.field.get_key(False) + '.' + self.key
@@ -250,13 +254,14 @@ class MapField(BaseField):
 
                 def to_mongo(self, *args, **kwargs):
                     return self.field.field.to_mongo(*args, **kwargs)
-                
+
                 def _validate(self, value):
                     pass
 
                 def get_key(self, *args, **kwargs):
                     return self.field.get_key(*args, **kwargs) + '.' + self.key
-                
+
+
             return Proxy(key, self)
         else:
             field = copy.deepcopy(self.field)

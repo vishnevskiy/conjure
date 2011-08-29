@@ -24,7 +24,7 @@ class Meta(object):
             self.multi = False
 
 class Eagerload(object):
-    def __init__(self, only):
+    def __init__(self, only=None):
         self.only = only
         self.fields = []
         self.documents = []
@@ -53,15 +53,15 @@ class Eagerload(object):
             self.add_document(documents)
 
         return self
-
+    
     def add_document(self, document):
         for meta in self.fields:
-            if meta.depth == 0:
+            if not meta.depth:
                 self._add_document(meta, document)
             else:
                 try:
                     documents = fieldgetter(meta.key)(document)
-
+                    
                     if isinstance(documents, list):
                         for document in documents:
                             self._add_document(meta, document)
@@ -77,7 +77,7 @@ class Eagerload(object):
             self.documents.append((meta, document))
 
     def flush(self):
-        if len(self.documents) == 0:
+        if not len(self.documents):
             return
 
         ids = set()

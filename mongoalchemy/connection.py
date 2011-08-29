@@ -1,5 +1,6 @@
 from .exceptions import ConnectionError
-from pymongo.connection import Connection, _parse_uri
+from pymongo.connection import Connection
+from pymongo.uri_parser import parse_uri
 
 _connections = {}
 
@@ -19,7 +20,12 @@ def _get_connection(hosts):
     return connection
 
 def connect(uri):
-    hosts, database, username, password = _parse_uri(uri, Connection.PORT)
+    parsed_uri = parse_uri(uri, Connection.PORT)
+
+    hosts = parsed_uri['nodelist']
+    username = parsed_uri['username']
+    password = parsed_uri['password']
+    database = parsed_uri['database']
 
     db = _get_connection(hosts)[database]
 
