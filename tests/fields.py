@@ -1,4 +1,4 @@
-from mongoalchemy import documents, fields, exceptions
+from conjure import documents, fields, exceptions
 import unittest
 import datetime
 

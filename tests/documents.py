@@ -1,9 +1,9 @@
 import unittest
 import datetime
-from mongoalchemy.documents import Document, EmbeddedDocument
-from mongoalchemy.fields import StringField, IntegerField, ReferenceField, DateTimeField, EmailField, ListField, EmbeddedDocumentField
-from mongoalchemy.exceptions import ValidationError, OperationError
-from mongoalchemy.utils import Alias
+from conjure.documents import Document, EmbeddedDocument
+from conjure.fields import StringField, IntegerField, ReferenceField, DateTimeField, EmailField, ListField, EmbeddedDocumentField
+from conjure.exceptions import ValidationError
+from conjure.utils import Alias
 import bson
 
 class DocumentTest(unittest.TestCase):

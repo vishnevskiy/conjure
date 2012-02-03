@@ -1,6 +1,6 @@
 import unittest
-from mongoalchemy.documents import Document, EmbeddedDocument
-from mongoalchemy.fields import StringField, ReferenceField, IntegerField, EmbeddedDocumentField, ListField
+from conjure.documents import Document, EmbeddedDocument
+from conjure.fields import StringField, ReferenceField, IntegerField, EmbeddedDocumentField, ListField
 
 class EagerloadTest(unittest.TestCase):
     def test_eagerload(self):

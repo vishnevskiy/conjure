@@ -1,9 +1,8 @@
-from mongoalchemy import fields, documents, enums
+from conjure import fields, documents, enums
 import unittest
 import datetime
-import bson
-from mongoalchemy.documents import EmbeddedDocument
-from mongoalchemy.fields import StringField, EmbeddedDocumentField, ListField
+from conjure.documents import EmbeddedDocument
+from conjure.fields import StringField, EmbeddedDocumentField, ListField
 
 class Settings(documents.EmbeddedDocument):
     sound = fields.BooleanField(default=True)

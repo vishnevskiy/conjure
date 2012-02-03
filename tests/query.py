@@ -1,7 +1,7 @@
 import unittest
 import pymongo
 from datetime import datetime
-from mongoalchemy import documents, fields, query, exceptions
+from conjure import documents, fields, query, exceptions
 import bson
 
 class QueryTest(unittest.TestCase):
