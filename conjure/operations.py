@@ -3,6 +3,8 @@ from .spec import Equal, NotEqual, LessThan, LessThanEqual, GreaterThan, Greater
 import types
 import re
 
+__all__ = ['Common', 'String', 'Number', 'List', 'Reference']
+
 class _Base(object):
     def get_key(self, *args, **kwargs):
         raise NotImplemented()

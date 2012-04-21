@@ -1,3 +1,5 @@
+__all__ = ['Eagerload']
+
 def fieldgetter(item):
     names = item.split('.')
 

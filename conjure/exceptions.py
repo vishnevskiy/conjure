@@ -1,3 +1,6 @@
+__all__ = ['DocumentError', 'ConnectionError', 'ValidationError', 'OperationError',
+           'DoesNotExist', 'InvalidQueryError']
+
 class DocumentError(Exception):
     pass
 

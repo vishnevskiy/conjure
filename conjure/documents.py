@@ -3,6 +3,8 @@ from .exceptions import OperationError
 from .query import Query
 import pymongo
 
+__all__ = ['Document', 'EmbeddedDocument']
+
 class Document(BaseDocument):
     __metaclass__ = DocumentMeta
 
