@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 DESCRIPTION = "A MongoDB object mapper inspired by Django models and SQLAlchemy's pythonic DSL."
 
-with open('README.md') as f:
+with open('README') as f:
     LONG_DESCRIPTION = f.read()
 
 VERSION = '0.1.0'
