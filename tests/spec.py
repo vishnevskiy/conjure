@@ -1,8 +1,9 @@
-from conjure import fields, documents, enums
+from conjure import fields, documents
 import unittest
 import datetime
 from conjure.documents import EmbeddedDocument
 from conjure.fields import StringField, EmbeddedDocumentField, ListField
+import conjure
 
 class Settings(documents.EmbeddedDocument):
     sound = fields.BooleanField(default=True)
@@ -79,8 +80,8 @@ class SpecTest(unittest.TestCase):
         self.assertEqual(~User.followers.exists(), {'followers': {'$exists': False}})
 
         # type
-        self.assertEqual(User.username.type(enums.STRING), {'username': {'$type': 2}})
-        self.assertEqual(~User.username.type(enums.STRING), {'username': {'$not': {'$type': 2}}})
+        self.assertEqual(User.username.type(conjure.STRING), {'username': {'$type': 2}})
+        self.assertEqual(~User.username.type(conjure.STRING), {'username': {'$not': {'$type': 2}}})
 
         # where
         self.assertEqual(User.username.where('this.username == "stan"'), {'username': {'$where': 'this.username == "stan"'}})

@@ -71,7 +71,6 @@ class OplogWatcher(object):
         else:
             self.all(ns=ns, ts=ts, op=op, id=id, raw=raw)
 
-    #noinspection PyUnusedLocal
     def all(self, ns, ts, op, id, raw):
         if op == 'i':
             self._execute(ns, 'insert', raw['o'])

@@ -4,6 +4,7 @@ from .query import Manager
 from operator import itemgetter
 import copy
 import bson
+import base64
 
 _documents = []
 
@@ -20,7 +21,7 @@ class DocumentMeta(type):
         _superclasses = {}
 
         _meta = {
-            'db': 'mongodb://localhost:27017/main',
+            'db': 'mongodb://localhost:27017/_conjure',
             'verbose_name': name.lower(),
             'verbose_name_plural': name.lower() + 's',
             'collection': name.lower() + 's',
@@ -287,6 +288,9 @@ class BaseField(Common):
     def to_mongo(self, value):
         return self.to_python(value)
 
+    def to_json(self, value):
+        return self.to_python(value)
+
     def validate(self, value):
         pass
 
@@ -321,20 +325,50 @@ class BaseField(Common):
         return None
 
 class ObjectIdField(BaseField):
+    def __init__(self, *args, **kwargs):
+        self.base64 = kwargs.pop('base64', False)
+        super(ObjectIdField, self).__init__(*args, **kwargs)
+
     def to_python(self, value):
         return value
 
     def to_mongo(self, value):
-        if value is not None and not isinstance(value, bson.objectid.ObjectId):
+        if self.base64:
+            cls = Base64ObjectId
+        else:
+            cls = bson.objectid.ObjectId
+
+        if value is not None and not isinstance(value, cls):
             try:
-                return bson.objectid.ObjectId(unicode(value))
+                return cls(unicode(value))
             except Exception, e:
                 raise ValidationError(unicode(e))
 
         return value
 
     def validate(self, value):
+        if self.base64:
+            cls = Base64ObjectId
+        else:
+            cls = bson.objectid.ObjectId
+
         try:
-            bson.objectid.ObjectId(unicode(value))
+            cls(unicode(value))
         except bson.objectid.InvalidId:
             raise ValidationError('Invalid Object ID')
+
+class Base64ObjectId(bson.objectid.ObjectId):
+    def __init__(self, oid=None):
+        if oid is None:
+            self._ObjectId__generate()
+        else:
+            self.__validate(oid)
+
+    def __validate(self, oid):
+        if isinstance(oid, basestring) and len(oid) == 16:
+            oid = base64.b64decode(oid, '-_')
+
+        return self._ObjectId__validate(oid)
+
+    def __str__(self):
+        return base64.b64encode(self.binary,  '-_')
