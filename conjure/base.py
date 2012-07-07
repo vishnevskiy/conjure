@@ -208,6 +208,10 @@ class BaseDocument(object):
 
         for field_name in only:
             field = self._fields[field_name]
+
+            if not field.serialize:
+                continue
+
             value = field.to_json(getattr(self, field_name))
 
             if value is not None:
@@ -244,7 +248,7 @@ class BaseDocument(object):
 
 class BaseField(Common):
     def __init__(self, verbose_name=None, db_field=None, required=False, default=None, validators=None, choices=None,
-                 editable=True, help_text=''):
+                 editable=True, help_text='', serialize=True):
         
         self.owner = None
         self.name = None
@@ -256,6 +260,7 @@ class BaseField(Common):
         self.choices = choices or []
         self.editable = editable
         self.help_text = help_text
+        self.serialize = serialize
 
     def get_key(self, positional=False):
         if isinstance(self.owner, BaseField):
