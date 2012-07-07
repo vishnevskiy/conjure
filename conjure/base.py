@@ -4,7 +4,6 @@ from .query import Manager
 from operator import itemgetter
 import copy
 import bson
-import base64
 
 _documents = []
 
@@ -202,6 +201,24 @@ class BaseDocument(object):
 
         return doc
 
+    def to_json(self, only=None, methods=None):
+        j = {}
+
+        only = only or self._fields.keys()
+
+        for field_name in only:
+            field = self._fields[field_name]
+            value = field.to_json(getattr(self, field_name))
+
+            if value is not None:
+                j[field_name] = value
+
+        if methods:
+            for method in methods:
+                j[method] = getattr(self, method)()
+
+        return j
+
     def validate(self):
         fields = [(field, getattr(self, name)) for name, field in self._fields.iteritems()]
 
@@ -325,50 +342,24 @@ class BaseField(Common):
         return None
 
 class ObjectIdField(BaseField):
-    def __init__(self, *args, **kwargs):
-        self.base64 = kwargs.pop('base64', False)
-        super(ObjectIdField, self).__init__(*args, **kwargs)
-
     def to_python(self, value):
         return value
 
     def to_mongo(self, value):
-        if self.base64:
-            cls = Base64ObjectId
-        else:
-            cls = bson.objectid.ObjectId
-
-        if value is not None and not isinstance(value, cls):
+        if value is not None and not isinstance(value, bson.objectid.ObjectId):
             try:
-                return cls(unicode(value))
+                return bson.objectid.ObjectId(unicode(value))
             except Exception, e:
                 raise ValidationError(unicode(e))
 
         return value
 
-    def validate(self, value):
-        if self.base64:
-            cls = Base64ObjectId
-        else:
-            cls = bson.objectid.ObjectId
+    def to_json(self, value):
+        if isinstance(value, bson.objectid.ObjectId):
+            return str(value)
 
+    def validate(self, value):
         try:
-            cls(unicode(value))
+            bson.objectid.ObjectId(unicode(value))
         except bson.objectid.InvalidId:
             raise ValidationError('Invalid Object ID')
-
-class Base64ObjectId(bson.objectid.ObjectId):
-    def __init__(self, oid=None):
-        if oid is None:
-            self._ObjectId__generate()
-        else:
-            self.__validate(oid)
-
-    def __validate(self, oid):
-        if isinstance(oid, basestring) and len(oid) == 16:
-            oid = base64.b64decode(oid, '-_')
-
-        return self._ObjectId__validate(oid)
-
-    def __str__(self):
-        return base64.b64encode(self.binary,  '-_')

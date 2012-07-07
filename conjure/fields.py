@@ -1,3 +1,4 @@
+import time
 from .base import BaseField, ObjectIdField
 from .operations import String, Number, Common, List, Reference
 from .exceptions import ValidationError
@@ -24,7 +25,9 @@ class StringField(String, BaseField):
         BaseField.__init__(self, **kwargs)
 
     def to_python(self, value):
-        return unicode(value)
+        if value is not None:
+            return unicode(value)
+        return ''
 
     def validate(self, value):
         assert isinstance(value, (str, unicode))
@@ -102,6 +105,10 @@ class DateTimeField(BaseField):
     def validate(self, value):
         assert isinstance(value, datetime.datetime)
 
+    def to_json(self, value):
+        if isinstance(value, datetime.datetime):
+            return time.mktime(value.timetuple())
+
 class DictField(BaseField):
     def validate(self, value):
         if not isinstance(value, dict):
@@ -171,6 +178,9 @@ class ListField(List, BaseField):
     def to_mongo(self, value):
         return [self.field.to_mongo(item) for item in value]
 
+    def to_json(self, value):
+        return [self.field.to_json(item) for item in value]
+
     def validate(self, value):
         if not isinstance(value, (list, tuple)):
             raise ValidationError('Only lists and tuples may be used in a list field')
@@ -216,6 +226,9 @@ class MapField(BaseField):
 
     def to_mongo(self, value):
         return dict((k, self.field.to_mongo(item)) for k, item in value.iteritems())
+
+    def to_json(self, value):
+        return dict((k, self.field.to_json(item)) for k, item in value.iteritems())
 
     def validate(self, value):
         if not isinstance(value, dict):
@@ -298,6 +311,10 @@ class EmbeddedDocumentField(BaseField):
     def to_mongo(self, value):
         return self.document.to_mongo(value)
 
+    def to_json(self, value):
+        if isinstance(value, self.document):
+            return self.document.to_json(value)
+
     def validate(self, value):
         if not isinstance(value, self.document):
             raise ValidationError('Invalid embedded document instance provided to an EmbeddedDocumentField')
@@ -364,6 +381,10 @@ class ReferenceField(BaseField, Reference):
             doc_id = document
 
         return field.to_mongo(doc_id)
+
+    def to_json(self, value):
+        if isinstance(value, Document):
+            return self.document_cls.to_json(value)
 
     def validate(self, value):
         if isinstance(value, Document):
