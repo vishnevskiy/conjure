@@ -37,10 +37,11 @@ class Document(BaseDocument):
             raise OperationError(unicode(err))
 
     def reload(self):
-        doc = self.__class__.objects.filter_by(id=self.id)._one()
-        
-        for field in self._fields.itervalues():
-            setattr(self, field.name, field.to_python(doc.get(field.db_field)))
+        data = self.__class__.objects.filter_by(id=self.id)._one()
+
+        for field in self.__class__._fields.values():
+            if field.db_field in data:
+                self._data[field.name] = field.to_python(data[field.db_field])
 
     @classmethod 
     def drop_collection(cls):
