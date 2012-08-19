@@ -313,7 +313,7 @@ class EmbeddedDocumentField(BaseField):
 
     def to_json(self, value):
         if isinstance(value, self.document):
-            return self.document.to_json(value)
+            return value.__class__.to_json(value)
 
     def validate(self, value):
         if not isinstance(value, self.document):
