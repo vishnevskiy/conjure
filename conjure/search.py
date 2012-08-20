@@ -39,7 +39,7 @@ class IndexMeta(type):
         attrs['terms'] = terms
 
         meta = attrs.pop('Meta', None)
-        
+
         attrs['_meta'] = {
             'host': getattr(meta, 'host'),
             'model': getattr(meta, 'model'),
@@ -80,7 +80,7 @@ class Index(object):
 
             if host not in _connections:
                 _connections[host] = pyes.ES(host)
-            
+
             self._connection = _connections[host]
 
         return self._connection
@@ -119,7 +119,7 @@ class Indexer(object):
 
                 if term.coerce is not None:
                     value = term.coerce(value)
-                    
+
                 doc[term.index_name] = value
 
         self._execute(self.index.connection.index, doc, self.index.namespace,
@@ -183,7 +183,7 @@ class ResultSet(object):
 
     def __len__(self):
         return self.objects.__len__()
-    
+
     def __iter__(self):
         for obj in self.objects:
             yield obj, self.meta[obj]
@@ -198,7 +198,7 @@ def search(indexes, query, page=1, limit=5, filters=None):
     for i, index in enumerate(indexes):
         if not isinstance(index, Index):
             model = index
-            
+
             for index in _indexes:
                 if index.model == model:
                     indexes[i] = index
@@ -217,7 +217,7 @@ def search(indexes, query, page=1, limit=5, filters=None):
         if any([op in query for op in ['?', '*', '~', 'OR', 'AND', '+', 'NOT', '-', ':']]):
             query = pyes.StringQuery(query)
         else:
-            query = pyes.StringQuery(query + '*') 
+            query = pyes.StringQuery(query + '*')
 
     if not isinstance(query, pyes.FilteredQuery) and filters:
         term_filter = pyes.TermFilter()
@@ -232,16 +232,16 @@ def search(indexes, query, page=1, limit=5, filters=None):
     skip = (page - 1) * limit
 
     try:
-        response = _indexes[0].connection.search(query, indexes=namespaces, **{
+        response = _indexes[0].connection.search(query, indices=namespaces, **{
             'from': str(skip),
             'size': str(limit)
         })
 
-        result_set.total = response['hits']['total']
-        result_set.elapsed_time = response['took'] / 1000.0
-        result_set.max_score = response['hits']['max_score']
+        result_set.total = response.total
+        result_set.elapsed_time = response._results['took'] / 1000.0
+        result_set.max_score = response.max_score
 
-        for i, hit in enumerate(response['hits']['hits']):
+        for i, hit in enumerate(response.hits):
             result_set.append(models[hit['_index']].objects.with_id(base64.b64decode(hit['_id'])), {
                 'rank': skip + i + 1,
                 'score': hit['_score'],
