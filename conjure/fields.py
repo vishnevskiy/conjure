@@ -228,6 +228,7 @@ class MapField(BaseField):
         return dict((k, self.field.to_mongo(item)) for k, item in value.iteritems())
 
     def to_json(self, value):
+        value = value or {}
         return dict((k, self.field.to_json(item)) for k, item in value.iteritems())
 
     def validate(self, value):
