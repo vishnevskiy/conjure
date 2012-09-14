@@ -130,7 +130,7 @@ class DictField(BaseField):
                 return value
 
             def get_key(self, *args, **kwargs):
-                return self.field.get_key(False) + '.' + self.key
+                return self.field.get_key(True) + '.' + self.key
 
         return Proxy(key, self)
 
