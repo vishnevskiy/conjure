@@ -1,6 +1,7 @@
 from .exceptions import ConnectionError
 from pymongo.connection import Connection
 from pymongo.uri_parser import parse_uri
+import sys
 
 _connections = {}
 
@@ -13,7 +14,7 @@ def _get_connection(hosts):
 
     if connection is None:
         try:
-            connection = _connections[key] = Connection(hosts)
+            connection = _connections[key] = Connection(hosts, use_greenlets='greenlet' in sys.modules)
         except Exception:
             raise ConnectionError('Cannot connect to the Mongo')
 
