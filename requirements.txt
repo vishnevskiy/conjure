@@ -1,1 +1,1 @@
-pymongo==2.3+\
+pymongo==2.3
