@@ -3,9 +3,10 @@ import types
 import collections
 import re
 
+
 class Specification(object):
     def compile(self, **kwargs):
-        raise NotImplemented()
+        raise NotImplemented
 
     def __init__(self, expressions=None):
         if type(expressions) == types.ListType:
@@ -17,13 +18,13 @@ class Specification(object):
             self.expressions = {}
 
     def to_dict(self):
-        raise NotImplemented()
+        raise NotImplemented
 
     def clone(self):
         return copy.deepcopy(self)
 
     def _set_expression(self, k, ops, v):
-        raise NotImplemented()
+        raise NotImplemented
 
     def __eq__(self, other):
         if type(other) == dict:
@@ -54,6 +55,7 @@ class Specification(object):
 
     def is_query(self):
         return isinstance(self, QuerySpecification)
+
 
 class UpdateSpecification(Specification):
     def compile(self):
@@ -86,6 +88,7 @@ class UpdateSpecification(Specification):
             spec[key] = copy.deepcopy(other[key])
 
         return UpdateSpecification(spec)
+
 
 class QuerySpecification(Specification):
     def compile(self, prefix=''):
@@ -199,43 +202,54 @@ class QuerySpecification(Specification):
     def __invert__(self):
         return QuerySpecification(self._invert_op('not'))
 
+
 class Equal(QuerySpecification):
     def __invert__(self):
         return NotEqual(self._invert_op('ne'))
+
 
 class NotEqual(QuerySpecification):
     def __invert__(self):
         return LessThan(self._invert_op('ne'))
 
+
 class LessThan(QuerySpecification):
     def __invert__(self):
         return GreaterThanEqual(self._swap_op('lt', 'gt'))
+
 
 class GreaterThan(QuerySpecification):
     def __invert__(self):
         return GreaterThanEqual(self._swap_op('gt', 'lt'))
 
+
 class LessThanEqual(QuerySpecification):
     def __invert__(self):
         return GreaterThanEqual(self._swap_op('lte', 'gte'))
+
 
 class GreaterThanEqual(QuerySpecification):
     def __invert__(self):
         return LessThanEqual(self._swap_op('gte', 'lte'))
 
+
 class Mod(QuerySpecification):
     pass
+
 
 class In(QuerySpecification):
     def __invert__(self):
         return NotIn(self._swap_op('in', 'nin'))
 
+
 class NotIn(QuerySpecification):
     def __invert__(self):
         return In(self._swap_op('nin', 'in'))
 
+
 class All(QuerySpecification):
     pass
+
 
 class Match(QuerySpecification):
     def __init__(self, expression):
@@ -253,8 +267,10 @@ class Match(QuerySpecification):
 
         QuerySpecification.__init__(self, expression)
 
+
 class Size(QuerySpecification):
     pass
+
 
 class Exists(QuerySpecification):
     def __invert__(self):
@@ -265,11 +281,14 @@ class Exists(QuerySpecification):
 
         return Exists(spec)
 
+
 class Type(QuerySpecification):
     pass
 
+
 class Where(QuerySpecification):
     pass
+
 
 class Slice(QuerySpecification):
     pass

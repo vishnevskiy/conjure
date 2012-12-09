@@ -15,16 +15,20 @@ CLASSIFIERS = [
     'Topic :: Software Development :: Libraries :: Python Modules',
 ]
 
-setup(name='conjure',
+setup(
+    name='conjure',
     version=VERSION,
     packages=find_packages(),
     author='Stanislav Vishnevskiy',
     author_email='vishnevskiy@gmail.com',
-    url='https://github.com/vishnevskiy/bbcodepy',
+    url='https://github.com/vishnevskiy/conjure',
     license='MIT',
     include_package_data=True,
     description=DESCRIPTION,
     long_description=LONG_DESCRIPTION,
+    install_requires=[
+        'pymongo>=2.3',
+    ],
     platforms=['any'],
     classifiers=CLASSIFIERS,
     test_suite='tests',

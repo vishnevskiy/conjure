@@ -5,12 +5,17 @@ import re
 
 __all__ = ['Common', 'String', 'Number', 'List', 'Reference']
 
+
 class _Base(object):
     def get_key(self, *args, **kwargs):
-        raise NotImplemented()
+        raise NotImplemented
 
     def _validate(self, *args, **kwargs):
-        raise NotImplemented()
+        raise NotImplemented
+
+    def to_mongo(self, value):
+        raise NotImplemented
+
 
 class Common(_Base):
     def __eq__(self, other):
@@ -74,6 +79,7 @@ class Common(_Base):
     def unset(self):
         return UpdateSpecification(['unset', self.get_key(True), 1])
 
+
 class String(_Base):
     def startswith(self, value):
         return self.re(r'^%s' % value)
@@ -98,6 +104,7 @@ class String(_Base):
 
     def ire(self, pattern):
         return Equal([self.get_key(), '', re.compile(pattern, re.IGNORECASE)])
+
 
 class Number(_Base):
     def __add__(self, val):
@@ -134,6 +141,7 @@ class Number(_Base):
 
     def mod(self, a, b):
         return Mod([self.name, 'mod', [a, b]])
+
 
 class List(_Base):
     def all(self, vals):
@@ -208,6 +216,7 @@ class List(_Base):
 
     def __mod__(self, val):
         return self.replace_with(val)
+
 
 class Reference(Common):
     def eq(self, other):

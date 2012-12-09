@@ -1,5 +1,6 @@
 __all__ = ['Eagerload']
 
+
 def fieldgetter(item):
     names = item.split('.')
 
@@ -10,6 +11,7 @@ def fieldgetter(item):
         return doc
 
     return proxy
+
 
 class Meta(object):
     def __init__(self, field):
@@ -24,6 +26,7 @@ class Meta(object):
             self.field = field
             self.name = field.name + '_id'
             self.multi = False
+
 
 class Eagerload(object):
     def __init__(self, only=None):
@@ -55,7 +58,7 @@ class Eagerload(object):
             self.add_document(documents)
 
         return self
-    
+
     def add_document(self, document):
         for meta in self.fields:
             if not meta.depth:
@@ -63,7 +66,7 @@ class Eagerload(object):
             else:
                 try:
                     documents = fieldgetter(meta.key)(document)
-                    
+
                     if isinstance(documents, list):
                         for document in documents:
                             self._add_document(meta, document)

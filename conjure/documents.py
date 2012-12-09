@@ -1,9 +1,10 @@
 from .base import BaseDocument, DocumentMeta, ObjectIdField
 from .exceptions import OperationError
 from .query import Query
-import pymongo
+import pymongo.errors
 
 __all__ = ['Document', 'EmbeddedDocument']
+
 
 class Document(BaseDocument):
     __metaclass__ = DocumentMeta
@@ -18,7 +19,7 @@ class Document(BaseDocument):
 
         try:
             collection = self.__class__.objects._collection
-   
+
             if insert:
                 object_id = collection.insert(doc, safe=safe)
             else:
@@ -29,6 +30,7 @@ class Document(BaseDocument):
         self['id'] = object_id
 
     def delete(self, safe=False):
+        #noinspection PyUnresolvedReferences
         object_id = self._fields['id'].to_mongo(self.id)
 
         try:
@@ -39,13 +41,15 @@ class Document(BaseDocument):
     def reload(self):
         data = self.__class__.objects.filter_by(id=self.id)._one()
 
+        #noinspection PyUnresolvedReferences
         for field in self.__class__._fields.values():
             if field.db_field in data:
                 self._data[field.name] = field.to_python(data[field.db_field])
 
-    @classmethod 
+    @classmethod
     def drop_collection(cls):
         cls.objects._collection.drop()
+
 
 class EmbeddedDocument(BaseDocument):
     __metaclass__ = DocumentMeta

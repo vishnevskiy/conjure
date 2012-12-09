@@ -7,6 +7,7 @@ import bson
 
 _documents = []
 
+
 class DocumentMeta(type):
     def __new__(cls, name, bases, attrs):
         metaclass = attrs.get('__metaclass__')
@@ -90,6 +91,7 @@ class DocumentMeta(type):
 
         return new_cls
 
+
 class BaseDocument(object):
 #    _fields = {}
 #    _meta = {}
@@ -103,8 +105,6 @@ class BaseDocument(object):
                 setattr(self, attr_name, attr_value)
             except AttributeError:
                 pass
-#                value = getattr(self, attr_name, None)
-#                setattr(self, attr_name, value)
 
     @classmethod
     def _get_subclasses(cls):
@@ -249,7 +249,7 @@ class BaseDocument(object):
 class BaseField(Common):
     def __init__(self, verbose_name=None, db_field=None, required=False, default=None, validators=None, choices=None,
                  editable=True, help_text='', serialize=True):
-        
+
         self.owner = None
         self.name = None
         self.verbose_name = verbose_name
@@ -293,16 +293,15 @@ class BaseField(Common):
         instance._data[self.name] = value
 
     def has_default(self):
-       return self.default is not None
+        return self.default is not None
 
     def get_default(self):
-       if self.has_default():
-           if callable(self.default):
-               return self.default()
+        if self.has_default():
+            if callable(self.default):
+                return self.default()
+            return self.default
 
-           return self.default
-
-       return None
+        return None
 
     def to_python(self, value):
         return value
@@ -340,11 +339,11 @@ class BaseField(Common):
 
                 return None
 
-
             setattr(cls, 'get_%s_display' % name, proxy)
 
     def lookup_member(self, name):
         return None
+
 
 class ObjectIdField(BaseField):
     def to_python(self, value):

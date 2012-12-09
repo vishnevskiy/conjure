@@ -13,13 +13,14 @@ import base64
 _indexes = []
 _connections = {}
 
+
 class IndexMeta(type):
-    def __new__(cls, name, bases, attrs):
+    def __new__(mcs, name, bases, attrs):
         metaclass = attrs.get('__metaclass__')
-        super_new = super(IndexMeta, cls).__new__
+        super_new = super(IndexMeta, mcs).__new__
 
         if metaclass and issubclass(metaclass, IndexMeta):
-            return super_new(cls, name, bases, attrs)
+            return super_new(mcs, name, bases, attrs)
 
         terms = {}
 
@@ -46,7 +47,7 @@ class IndexMeta(type):
             'spec': getattr(meta, 'spec', QuerySpecification()),
         }
 
-        new_cls = super_new(cls, name, bases, attrs)
+        new_cls = super_new(mcs, name, bases, attrs)
 
         index = new_cls.instance()
 
@@ -54,6 +55,7 @@ class IndexMeta(type):
         index.model._search_index = index
 
         return new_cls
+
 
 class Index(object):
     __metaclass__ = IndexMeta
@@ -91,6 +93,7 @@ class Index(object):
     def indexer(self):
         return Indexer(self)
 
+
 class Term(object):
     def __init__(self, index_name=None, index=True, boost=1.0, null_value=None, coerce=None):
         self.name = None
@@ -99,6 +102,7 @@ class Term(object):
         self.boost = boost
         self.null_value = null_value
         self.coerce = coerce
+
 
 class Indexer(object):
     def __init__(self, index):
@@ -126,7 +130,8 @@ class Indexer(object):
                       self.index.doc_type, id=base64.b64encode(str(obj.id)), bulk=bulk)
 
     def delete_document(self, doc_id):
-        self._execute(self.index.connection.delete, self.index.namespace, self.index.doc_type, base64.b64encode(str(doc_id)))
+        self._execute(self.index.connection.delete, self.index.namespace,
+            self.index.doc_type, base64.b64encode(str(doc_id)))
 
     def insert(self, obj):
         obj = self.index.model.to_python(obj)
@@ -165,6 +170,7 @@ class Indexer(object):
                 logging.warning('Retrying... (%d)' % attempts, exc_info=True)
                 time.sleep(1)
 
+
 class ResultSet(object):
     def __init__(self, objects=None, total=0, elapsed_time=0, max_score=0):
         self.objects = objects or []
@@ -187,6 +193,7 @@ class ResultSet(object):
     def __iter__(self):
         for obj in self.objects:
             yield obj, self.meta[obj]
+
 
 def search(indexes, query, page=1, limit=5, filters=None):
     if not isinstance(indexes, list):
@@ -252,6 +259,7 @@ def search(indexes, query, page=1, limit=5, filters=None):
 
     return result_set
 
+
 def reindex(only=None):
     logging.info('Reindexing...')
 
@@ -284,6 +292,7 @@ def reindex(only=None):
         indexer.index.connection.force_bulk()
 
     logging.info('Done!')
+
 
 def watch():
     hosts = collections.defaultdict(list)

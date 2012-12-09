@@ -13,8 +13,10 @@ __all__ = ['ObjectIdField', 'GenericField', 'StringField', 'EmailField', 'Intege
 
 ObjectIdField = ObjectIdField
 
+
 class GenericField(BaseField):
     pass
+
 
 class StringField(String, BaseField):
     def __init__(self, regex=None, min_length=None, max_length=None, escape=False, **kwargs):
@@ -41,6 +43,7 @@ class StringField(String, BaseField):
         if self.regex is not None and self.regex.match(value) is None:
             raise ValidationError('String value did not match validation regex')
 
+
 class EmailField(StringField):
     EMAIL_REGEX = re.compile(
         r"(^[-!#$%&'*+/=?^_`{}|~0-9A-Z]+(\.[-!#$%&'*+/=?^_`{}|~0-9A-Z]+)*"
@@ -51,6 +54,7 @@ class EmailField(StringField):
     def validate(self, value):
         if not EmailField.EMAIL_REGEX.match(value):
             raise ValidationError('Invalid Email: %s' % value)
+
 
 class IntegerField(Number, BaseField):
     def __init__(self, min_value=None, max_value=None, **kwargs):
@@ -75,6 +79,7 @@ class IntegerField(Number, BaseField):
         if self.max_value is not None and value > self.max_value:
             raise ValidationError('Integer value is too large')
 
+
 class FloatField(IntegerField):
     def to_python(self, value):
         return float(value)
@@ -94,6 +99,7 @@ class FloatField(IntegerField):
         if self.max_value is not None and value > self.max_value:
             raise ValidationError('Float value is too large')
 
+
 class BooleanField(BaseField):
     def to_python(self, value):
         return bool(value)
@@ -101,13 +107,15 @@ class BooleanField(BaseField):
     def validate(self, value):
         assert isinstance(value, bool)
 
+
 class DateTimeField(BaseField):
     def validate(self, value):
         assert isinstance(value, datetime.datetime)
 
     def to_json(self, value):
         if isinstance(value, datetime.datetime):
-            return time.mktime(value.timetuple())
+            return int(time.mktime(value.timetuple()))
+
 
 class DictField(BaseField):
     def validate(self, value):
@@ -133,6 +141,7 @@ class DictField(BaseField):
                 return self.field.get_key(True) + '.' + self.key
 
         return Proxy(key, self)
+
 
 class ListField(List, BaseField):
     def __init__(self, field, default=None, **kwargs):
@@ -212,6 +221,7 @@ class ListField(List, BaseField):
     def lookup_member(self, name):
         return self.field.lookup_member(name)
 
+
 class MapField(BaseField):
     def __init__(self, field, **kwargs):
         if not isinstance(field, BaseField):
@@ -278,7 +288,6 @@ class MapField(BaseField):
                 def get_key(self, *args, **kwargs):
                     return self.field.get_key(*args, **kwargs) + '.' + self.key
 
-
             return Proxy(key, self)
         else:
             field = copy.deepcopy(self.field)
@@ -289,6 +298,7 @@ class MapField(BaseField):
             field.get_key = functools.partial(get_key, self.field, key)
 
             return field
+
 
 class EmbeddedDocumentField(BaseField):
     def __init__(self, document, **kwargs):
@@ -324,6 +334,7 @@ class EmbeddedDocumentField(BaseField):
 
     def lookup_member(self, name):
         return self.document._fields.get(name)
+
 
 class ReferenceField(BaseField, Reference):
     def __init__(self, document_cls, lazyload_only=None, **kwargs):

@@ -5,8 +5,10 @@ from .eagerload import Eagerload
 from .utils import lookup_field
 import copy
 import pymongo
+import pymongo.errors
 import pprint
 import re
+
 
 class Manager(object):
     def __init__(self):
@@ -21,6 +23,7 @@ class Manager(object):
             self._collection = db[owner._meta['collection']]
 
         return Query(owner, self._collection)
+
 
 class Query(object):
     def __init__(self, document_cls, collection):
@@ -109,7 +112,7 @@ class Query(object):
         return self
 
     def filter_by(self, **kwargs):
-        for k,v  in kwargs.iteritems():
+        for k, v in kwargs.iteritems():
             self._spec &= getattr(self._document_cls, k).eq(v)
 
         return self
@@ -121,7 +124,7 @@ class Query(object):
         return self
 
     def exclude_by(self, **kwargs):
-        for k,v  in kwargs.iteritems():
+        for k, v in kwargs.iteritems():
             self._spec &= ~getattr(self._document_cls, k).eq(v)
 
         return self
@@ -222,10 +225,10 @@ class Query(object):
         return self._collection.remove(self._compile_spec(), safe=safe)
 
     def _update(self, update, safe, upsert, multi):
-       try:
-           self._collection.update(self._compile_spec(), update, safe=safe, upsert=upsert, multi=multi)
-       except pymongo.errors.OperationFailure, err:
-           raise OperationError(unicode(err))
+        try:
+            self._collection.update(self._compile_spec(), update, safe=safe, upsert=upsert, multi=multi)
+        except pymongo.errors.OperationFailure, err:
+            raise OperationError(unicode(err))
 
     def update(self, update_spec, safe=False):
         self._update(update_spec.compile(), safe, False, True)
@@ -265,9 +268,9 @@ class Query(object):
 
     def __repr__(self):
         return self._spec.__repr__()
-    
+
     def search(self, *args, **kwargs):
         if self._document_cls._search_index is not None:
             return self._document_cls._search_index.search(*args, **kwargs)
-        
+
         raise AttributeError()

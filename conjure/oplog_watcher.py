@@ -1,5 +1,6 @@
-import pymongo
+import pymongo.errors
 import time
+
 
 class OplogWatcher(object):
     def __init__(self, connection, namespaces, poll_time=1.0):
@@ -69,9 +70,9 @@ class OplogWatcher(object):
         if op == 'n':
             self._execute(ns, 'noop', ts)
         else:
-            self.all(ns=ns, ts=ts, op=op, id=id, raw=raw)
+            self.all(ns, ts, op, id, raw)
 
-    def all(self, ns, ts, op, id, raw):
+    def all(self, ns, _, op, id, raw):
         if op == 'i':
             self._execute(ns, 'insert', raw['o'])
         elif op == 'u':

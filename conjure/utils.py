@@ -1,5 +1,6 @@
 from .exceptions import InvalidQueryError
 
+
 class Alias(object):
     def __init__(self, field=None):
         self.field = field
@@ -16,6 +17,7 @@ class Alias(object):
 
         return instance.__set__(self.field, value)
 
+
 def lookup_field(document, key):
     parts = key.split('.')
 
@@ -29,7 +31,7 @@ def lookup_field(document, key):
             field = field.lookup_member(field_name)
 
             if field is None:
-                raise InvalidQueryError('Cannot resolve field "%s"'  % field_name)
+                raise InvalidQueryError('Cannot resolve field "%s"' % field_name)
 
         fields.append(field)
 
