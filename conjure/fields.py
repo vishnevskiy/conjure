@@ -200,7 +200,8 @@ class ListField(List, BaseField):
             raise ValidationError('Invalid ListField item (%s)' % str(err))
 
     def add_to_document(self, cls):
-        if not isinstance(self.field, ReferenceField): return
+        if not isinstance(self.field, ReferenceField):
+            return
 
         name = self.name
 
@@ -268,7 +269,7 @@ class MapField(BaseField):
                                 return left + self.get_key(False) + right
                             elif e.is_update():
                                 left, _, right = name.rpartition(self.field.name)
-                                return left + self.get_key(True)  + right
+                                return left + self.get_key(True) + right
 
                         e.expressions = dict((wrap(key), item) for key, item in e.expressions.iteritems())
 
@@ -338,7 +339,8 @@ class EmbeddedDocumentField(BaseField):
 
 class ReferenceField(BaseField, Reference):
     def __init__(self, document_cls, lazyload_only=None, **kwargs):
-        if not isinstance(document_cls, str) and not (hasattr(document_cls, '_meta') and not document_cls._meta['embedded']):
+        if not isinstance(document_cls, str) and \
+                not (hasattr(document_cls, '_meta') and not document_cls._meta['embedded']):
             raise ValidationError('Argument to ReferenceField constructor must be a document class')
 
         self._document_cls = document_cls
@@ -417,4 +419,3 @@ class ReferenceField(BaseField, Reference):
 
     def lookup_member(self, name):
         return self.document_cls._fields.get(name)
-
