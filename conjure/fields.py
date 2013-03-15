@@ -35,13 +35,13 @@ class StringField(String, BaseField):
         assert isinstance(value, (str, unicode))
 
         if self.max_length is not None and len(value) > self.max_length:
-            raise ValidationError('String value is too long')
+            raise ValidationError('String field "%s" value is too long (%s max, but %s)' % (self.name, self.max_length, len(value)))
 
         if self.min_length is not None and len(value) < self.min_length:
-            raise ValidationError('String value is too short')
+            raise ValidationError('String filed "%s" value is too short (%s min, but %s)' % (self.name, self.min_lenght, len(value)))
 
         if self.regex is not None and self.regex.match(value) is None:
-            raise ValidationError('String value did not match validation regex')
+            raise ValidationError('String filed "%s" value did not match validation regex' % self.name)
 
 
 class EmailField(StringField):
@@ -71,13 +71,13 @@ class IntegerField(Number, BaseField):
         try:
             value = int(value)
         except:
-            raise ValidationError('%s could not be converted to int' % value)
+            raise ValidationError('field "%s" value %s could not be converted to int' % (self.name, value))
 
         if self.min_value is not None and value < self.min_value:
-            raise ValidationError('Integer value is too small')
+            raise ValidationError('Integer field "%s" value is too small (%s min)' % (self.name, self.min_value))
 
         if self.max_value is not None and value > self.max_value:
-            raise ValidationError('Integer value is too large')
+            raise ValidationError('Integer field "%s" value is too large (%s max)' % (self.name, self.max_value))
 
 
 class FloatField(IntegerField):
@@ -94,10 +94,10 @@ class FloatField(IntegerField):
         assert isinstance(value, float)
 
         if self.min_value is not None and value < self.min_value:
-            raise ValidationError('Float value is too small')
+            raise ValidationError('Float field "%s" value is too small (%s min)' % (self.name, self.min_value))
 
         if self.max_value is not None and value > self.max_value:
-            raise ValidationError('Float value is too large')
+            raise ValidationError('Float field "%s" value is too large (%s max)' % (self.name, self.max_value))
 
 
 class BooleanField(BaseField):
