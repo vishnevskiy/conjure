@@ -71,13 +71,13 @@ class IntegerField(Number, BaseField):
         try:
             value = int(value)
         except:
-            raise ValidationError('%s could not be converted to int' % value)
+            raise ValidationError('field "%s" value %s could not be converted to int' % (self.name, value))
 
         if self.min_value is not None and value < self.min_value:
-            raise ValidationError('Integer value is too small')
+            raise ValidationError('Integer field "%s" value is too small (%s min)' % (self.name, self.min_value))
 
         if self.max_value is not None and value > self.max_value:
-            raise ValidationError('Integer value is too large')
+            raise ValidationError('Integer field "%s" value is too large (%s max)' % (self.name, self.max_value))
 
 
 class FloatField(IntegerField):
@@ -94,10 +94,10 @@ class FloatField(IntegerField):
         assert isinstance(value, float)
 
         if self.min_value is not None and value < self.min_value:
-            raise ValidationError('Float value is too small')
+            raise ValidationError('Float field "%s" value is too small (%s min)' % (self.name, self.min_value))
 
         if self.max_value is not None and value > self.max_value:
-            raise ValidationError('Float value is too large')
+            raise ValidationError('Float field "%s" value is too large (%s max)' % (self.name, self.max_value))
 
 
 class BooleanField(BaseField):
