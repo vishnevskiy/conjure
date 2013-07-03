@@ -142,7 +142,7 @@ class Query(object):
             raise DoesNotExist()
 
     def all(self):
-        return list(self)
+        return [doc for doc in self]
 
     def with_id(self, object_id):
         return self.filter_by(id=self._document_cls.id.to_mongo(object_id)).one()
