@@ -114,7 +114,7 @@ class Eagerload(object):
             for value in values:
                 remaining = []
 
-                for meta, document in documents:
+                for meta, document in self.documents:
                     if meta.multi:
                         try:
                             data = document._data[meta.field.owner.name]
