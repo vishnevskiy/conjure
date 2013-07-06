@@ -113,7 +113,7 @@ class Eagerload(object):
                 values = values.only(*self.only)
 
             for value in values:
-                for data, name, i in mapping[values._data['id']]:
+                for data, name, i in mapping[value._data['id']]:
                     if name is None:
                         data[i] = value
                     else:
