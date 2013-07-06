@@ -34,11 +34,8 @@ class Eagerload(object):
     def __init__(self, only=None):
         self.only = only
         self.fields = []
-        self.documents = []
+        self.mapping = defaultdict(list)
         self.document_cls = None
-
-        self.single = {}
-        self.multi = {}
 
     def add_field(self, field):
         meta = Meta(field)
@@ -70,8 +67,8 @@ class Eagerload(object):
                     documents = fieldgetter(meta.key)(document)
 
                     if isinstance(documents, list):
-                        for document in documents:
-                            self._add_document(meta, document)
+                        for doc in documents:
+                            self._add_document(meta, doc)
                     else:
                         self._add_document(meta, document)
                 except AttributeError:
@@ -81,40 +78,35 @@ class Eagerload(object):
 
     def _add_document(self, meta, document):
         if getattr(document, meta.name, None):
-            self.documents.append((meta, document))
-
-    def flush(self):
-        if not len(self.documents):
-            return
-
-        mapping = defaultdict(list)
-
-        for meta, document in self.documents:
             id_values = getattr(document, meta.name)
 
             if id_values:
                 if meta.multi:
                     for i, id_value in enumerate(id_values):
-                        mapping[id_value].append((document._data[meta.field.owner.name], None, i))
+                        self.mapping[id_value].append((document._data[meta.field.owner.name], None, i))
                 else:
-                    mapping[id_values].append((document._data, meta.field.name, -1))
+                    self.mapping[id_values].append((document._data, meta.field.name, -1))
 
-        if mapping:
-            cls = self.document_cls
+    def flush(self):
+        if not self.mapping:
+            return
 
-            ids = mapping.keys()
+        mapping = self.mapping
+        cls = self.document_cls
 
-            if len(ids) == 1:
-                values = cls.objects.filter(cls.id == ids[0])
-            else:
-                values = cls.objects.filter(cls.id.in_(ids))
+        ids = mapping.keys()
 
-            if self.only is not None:
-                values = values.only(*self.only)
+        if len(ids) == 1:
+            values = cls.objects.filter(cls.id == ids[0])
+        else:
+            values = cls.objects.filter(cls.id.in_(ids))
 
-            for value in values:
-                for data, name, i in mapping[value._data['id']]:
-                    if name is None:
-                        data[i] = value
-                    else:
-                        data[name] = value
+        if self.only is not None:
+            values = values.only(*self.only)
+
+        for value in values:
+            for data, name, i in mapping[value._data['id']]:
+                if name is None:
+                    data[i] = value
+                else:
+                    data[name] = value
