@@ -87,34 +87,46 @@ class Eagerload(object):
         if not len(self.documents):
             return
 
-        mapping = defaultdict(list)
+        ids = set()
 
         for meta, document in self.documents:
-            id_values = getattr(document, meta.name)
+            ref_id = getattr(document, meta.name)
 
-            if id_values:
+            if ref_id:
                 if meta.multi:
-                    for i, id_value in enumerate(id_values):
-                        mapping[id_value].append((document._data[meta.field.owner.name], None, i))
+                    ids |= set(ref_id)
                 else:
-                    mapping[id_values].append((document._data, meta.field.name, -1))
+                    ids.add(ref_id)
 
-        if mapping:
+        if ids:
             cls = self.document_cls
 
-            ids = mapping.keys()
-
             if len(ids) == 1:
-                values = cls.objects.filter(cls.id == ids[0])
+                values = cls.objects.filter(cls.id == ids.pop())
             else:
-                values = cls.objects.filter(cls.id.in_(ids))
+                values = cls.objects.filter(cls.id.in_(list(ids)))
 
             if self.only is not None:
                 values = values.only(*self.only)
 
+            documents = self.documents
+
             for value in values:
-                for data, name, i in mapping[value._data['id']]:
-                    if name is None:
-                        data[i] = value
-                    else:
-                        data[name] = value
+                remaining = []
+
+                for meta, document in documents:
+                    if meta.multi:
+                        try:
+                            data = document._data[meta.field.owner.name]
+
+                            while True:
+                                data[data.index(value.id)] = value
+                        except (ValueError, IndexError, KeyError):
+                            pass
+                    elif document._data.get(meta.field.name) == value._data['id']:
+                        document._data[meta.field.name] = value
+                        continue
+
+                    remaining.append((meta, document))
+
+                documents = remaining
