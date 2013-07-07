@@ -24,3 +24,7 @@ class DoesNotExist(DocumentError):
 
 class InvalidQueryError(Exception):
     pass
+
+
+class EagerloadException(Exception):
+    pass

@@ -1,33 +1,32 @@
 from collections import defaultdict
+from operator import attrgetter
+from .exceptions import EagerloadException
 
 __all__ = ['Eagerload']
 
-
-def fieldgetter(item):
-    names = item.split('.')
-
-    def proxy(doc):
-        for name in names[:-1]:
-            doc = getattr(doc, name)
-
-        return doc
-
-    return proxy
+ITERABLE_TYPES = (tuple, list, set)
+ITERABLE_FIELDS = {'ListField', 'MapField'}
 
 
-class Meta(object):
+class TargetField(object):
     def __init__(self, field):
-        self.key = field.get_key()
-        self.depth = field.get_key().count('.')
+        key = field.get_key()
 
-        if field.__class__.__name__ == 'ListField':
-            self.field = field.field
-            self.name = field.name + '_'
-            self.multi = True
+        try:
+            self.fieldgetter = attrgetter(key[:key.rindex('.')])
+        except ValueError:
+            self.fieldgetter = None
+
+        if field.__class__.__name__ in ITERABLE_FIELDS:
+            self.name = field.field.owner.name
+            self.document_cls = field.field.document_cls
+            self.idgetter = attrgetter(field.name + '_')
+            self.iterable = True
         else:
-            self.field = field
-            self.name = field.name + '_id'
-            self.multi = False
+            self.name = field.name
+            self.document_cls = field.document_cls
+            self.idgetter = attrgetter(field.name + '_id')
+            self.iterable = False
 
 
 class Eagerload(object):
@@ -38,54 +37,58 @@ class Eagerload(object):
         self.document_cls = None
 
     def add_field(self, field):
-        meta = Meta(field)
+        target_field = TargetField(field)
 
         if not self.document_cls:
-            self.document_cls = meta.field.document_cls
-        else:
-            assert self.document_cls is meta.field.document_cls, 'All fields must load the same document.'
+            self.document_cls = target_field.document_cls
+        elif self.document_cls is not target_field.document_cls:
+            raise EagerloadException('All fields must load the same document.')
 
-        self.fields.append(meta)
+        self.fields.append(target_field)
 
         return self
 
     def add_documents(self, documents):
-        if isinstance(documents, list):
+        if not isinstance(documents, ITERABLE_TYPES):
+            self.add_document(documents)
+        else:
             for document in documents:
                 self.add_document(document)
-        else:
-            self.add_document(documents)
-
         return self
 
     def add_document(self, document):
-        for meta in self.fields:
-            if not meta.depth:
-                self._add_document(meta, document)
+        for field in self.fields:
+            if field.fieldgetter:
+                documents = field.fieldgetter(document)
+                if not isinstance(documents, ITERABLE_TYPES):
+                    documents = [documents]
             else:
-                try:
-                    documents = fieldgetter(meta.key)(document)
+                documents = [document]
 
-                    if isinstance(documents, list):
-                        for doc in documents:
-                            self._add_document(meta, doc)
-                    else:
-                        self._add_document(meta, document)
-                except AttributeError:
-                    pass
+            for doc in documents:
+                self._add_document(field, doc)
 
         return self
 
-    def _add_document(self, meta, document):
-        if getattr(document, meta.name, None):
-            id_values = getattr(document, meta.name)
+    def _add_document(self, field, document):
+        try:
+            ids = field.idgetter(document)
+        except AttributeError:
+            return
 
-            if id_values:
-                if meta.multi:
-                    for i, id_value in enumerate(id_values):
-                        self.mapping[id_value].append((document._data[meta.field.owner.name], None, i))
-                else:
-                    self.mapping[id_values].append((document._data, meta.field.name, -1))
+        if not ids:
+            return
+
+        if field.iterable:
+            if isinstance(ids, dict):
+                gen = ids.viewitems()
+            else:
+                gen = enumerate(ids)
+
+            for k, v in gen:
+                self.mapping[v].append((k, document._data[field.name]))
+        else:
+            self.mapping[ids].append((field.name, document._data))
 
     def flush(self):
         if not self.mapping:
@@ -93,20 +96,13 @@ class Eagerload(object):
 
         mapping = self.mapping
         cls = self.document_cls
-
         ids = mapping.keys()
 
-        if len(ids) == 1:
-            values = cls.objects.filter(cls.id == ids[0])
-        else:
-            values = cls.objects.filter(cls.id.in_(ids))
+        cursor = cls.objects.filter(cls.id == ids[0] if len(ids) == 1 else cls.id.in_(ids))
 
         if self.only is not None:
-            values = values.only(*self.only)
+            cursor.only(*self.only)
 
-        for value in values:
-            for data, name, i in mapping[value._data['id']]:
-                if name is None:
-                    data[i] = value
-                else:
-                    data[name] = value
+        for document in cursor:
+            for key, data in mapping[document._data['id']]:
+                data[key] = document
