@@ -58,7 +58,7 @@ class Eagerload(object):
     def add_document(self, document):
         for field in self.fields:
             if field.field_attr:
-                documents = getattr(field.field_attr, document)
+                documents = getattr(document, field.field_attr)
                 if not isinstance(documents, ITERABLE_TYPES):
                     documents = [documents]
             else:
