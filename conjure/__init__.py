@@ -2,7 +2,7 @@ from .documents import *
 from .exceptions import *
 from .eagerload import *
 from .fields import *
-from bson.objectid import ObjectId
+from bson.objectid import ObjectId, InvalidId
 
 DOUBLE = 1
 STRING = 2
