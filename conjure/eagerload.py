@@ -1,5 +1,4 @@
 from collections import defaultdict
-from operator import attrgetter
 from .exceptions import EagerloadException
 
 __all__ = ['Eagerload']
@@ -13,19 +12,19 @@ class TargetField(object):
         key = field.get_key()
 
         try:
-            self.fieldgetter = attrgetter(key[:key.rindex('.')])
+            self.field_attr = key[:key.rindex('.')]
         except ValueError:
-            self.fieldgetter = None
+            self.field_attr = None
 
         if field.__class__.__name__ in ITERABLE_FIELDS:
             self.name = field.field.owner.name
             self.document_cls = field.field.document_cls
-            self.idgetter = attrgetter(field.name + '_')
+            self.id_attr = field.name + '_'
             self.iterable = True
         else:
             self.name = field.name
             self.document_cls = field.document_cls
-            self.idgetter = attrgetter(field.name + '_id')
+            self.id_attr = field.name + '_id'
             self.iterable = False
 
 
@@ -58,8 +57,8 @@ class Eagerload(object):
 
     def add_document(self, document):
         for field in self.fields:
-            if field.fieldgetter:
-                documents = field.fieldgetter(document)
+            if field.field_attr:
+                documents = getattr(field.field_attr, document)
                 if not isinstance(documents, ITERABLE_TYPES):
                     documents = [documents]
             else:
@@ -72,7 +71,7 @@ class Eagerload(object):
 
     def _add_document(self, field, document):
         try:
-            ids = field.idgetter(document)
+            ids = getattr(document, field.id_attr)
         except AttributeError:
             return
 
