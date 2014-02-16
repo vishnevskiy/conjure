@@ -34,11 +34,16 @@ class OplogWatcher(object):
         except pymongo.errors.OperationFailure:
             oplog = self.connection.local['oplog.$main']
 
+        build_info = self.connection.admin.command({'buildInfo': 1})
+        is_tokumx = 'tokumxVersion' in build_info
+
         ts = oplog.find().sort('$natural', -1)[0]['ts']
 
         while True:
             if self._ns_filter is None:
                 filter = {}
+            elif is_tokumx:
+                filter = {'ops.ns': self._ns_filter}
             else:
                 filter = {'ns': self._ns_filter}
 
@@ -49,9 +54,9 @@ class OplogWatcher(object):
 
                 while True:
                     for doc in cursor:
-                        ops = doc['ops'] if 'ops' in doc else [doc]
+                        ops = doc['ops'] if is_tokumx else [doc]
                         for op in ops:
-                            ts = op['ts']
+                            ts = doc['ts']
                             id = self.__get_id(op)
 
                             self.all_with_noop(ns=op['ns'], ts=ts, op=op['op'], id=id, raw=op)
