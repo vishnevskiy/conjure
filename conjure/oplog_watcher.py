@@ -48,11 +48,13 @@ class OplogWatcher(object):
                 cursor = oplog.find(filter, tailable=True)
 
                 while True:
-                    for op in cursor:
-                        ts = op['ts']
-                        id = self.__get_id(op)
+                    for doc in cursor:
+                        ops = doc['ops'] if 'ops' in doc else [doc]
+                        for op in ops:
+                            ts = op['ts']
+                            id = self.__get_id(op)
 
-                        self.all_with_noop(ns=op['ns'], ts=ts, op=op['op'], id=id, raw=op)
+                            self.all_with_noop(ns=op['ns'], ts=ts, op=op['op'], id=id, raw=op)
 
                     self.sleep()
 
@@ -75,7 +77,7 @@ class OplogWatcher(object):
     def all(self, ns, _, op, id, raw):
         if op == 'i':
             self._execute(ns, 'insert', raw['o'])
-        elif op == 'u':
+        elif op == 'u' or op == 'ur':
             self._execute(ns, 'update', id, raw)
         elif op == 'd':
             self._execute(ns, 'delete', id)
