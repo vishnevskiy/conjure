@@ -82,6 +82,8 @@ class IntegerField(Number, BaseField):
 
 class FloatField(IntegerField):
     def to_python(self, value):
+        if value is None:
+            return self.get_default()
         return float(value)
 
     def validate(self, value):
