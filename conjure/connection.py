@@ -22,7 +22,7 @@ def _get_connection(hosts):
 
 
 def connect(uri):
-    parsed_uri = parse_uri(uri, 27017)
+    parsed_uri = parse_uri(uri)
 
     hosts = parsed_uri['nodelist']
     username = parsed_uri['username']
