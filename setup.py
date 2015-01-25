@@ -27,7 +27,7 @@ setup(
     description=DESCRIPTION,
     long_description=LONG_DESCRIPTION,
     install_requires=[
-        'pymongo>=2.3',
+        'pymongo>=2.7.2',
     ],
     platforms=['any'],
     classifiers=CLASSIFIERS,

@@ -1,5 +1,5 @@
 from .exceptions import ConnectionError
-from pymongo.connection import Connection
+from pymongo import MongoClient
 from pymongo.uri_parser import parse_uri
 
 _connections = {}
@@ -14,7 +14,7 @@ def _get_connection(hosts):
 
     if connection is None:
         try:
-            connection = _connections[key] = Connection(hosts)
+            connection = _connections[key] = MongoClient(hosts)
         except Exception as e:
             raise ConnectionError(e.message)
 
@@ -22,7 +22,7 @@ def _get_connection(hosts):
 
 
 def connect(uri):
-    parsed_uri = parse_uri(uri, Connection.PORT)
+    parsed_uri = parse_uri(uri, 27017)
 
     hosts = parsed_uri['nodelist']
     username = parsed_uri['username']
