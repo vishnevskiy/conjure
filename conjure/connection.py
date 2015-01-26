@@ -4,6 +4,11 @@ from pymongo.uri_parser import parse_uri
 
 _connections = {}
 
+try:
+    import gevent
+except ImportError:
+    gevent = None
+
 
 def _get_connection(hosts):
     global _connections
@@ -14,7 +19,7 @@ def _get_connection(hosts):
 
     if connection is None:
         try:
-            connection = _connections[key] = MongoClient(hosts)
+            connection = _connections[key] = MongoClient(hosts, use_greenlets=gevent is not None)
         except Exception as e:
             raise ConnectionError(e.message)
 
