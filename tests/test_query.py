@@ -431,6 +431,24 @@ class QueryTest(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+    def test_chain_regex(self):
+        class TextHolder(documents.Document):
+            data = fields.StringField()
+            
+        TextHolder.drop_collection()
+
+        text1 = TextHolder(data='Hello')
+        text2 = TextHolder(data='hello')
+        
+        text1.save()
+        text2.save()
+
+        obs = TextHolder.objects.filter(TextHolder.data.icontains('hello'))
+
+        obs = obs.filter(TextHolder.data.icontains('ello'))
+
+        self.assertEqual(len(obs), 2)
+
     def tearDown(self):
         self.User.drop_collection()
 
