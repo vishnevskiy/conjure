@@ -2,6 +2,8 @@ import copy
 import types
 import collections
 import re
+try: import cPickle as pickle
+except ImportException: import pickle
 
 
 class Specification(object):
@@ -201,6 +203,9 @@ class QuerySpecification(Specification):
 
     def __invert__(self):
         return QuerySpecification(self._invert_op('not'))
+
+    def __deepcopy__(self, memo):
+        return pickle.loads(pickle.dumps(self))
 
 
 class Equal(QuerySpecification):
